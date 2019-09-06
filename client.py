@@ -2,19 +2,25 @@ import socket
 import threading
 
 
+end = False
+
+
 def chat_receive():
-    while True:
+    while not end:
         msg = s.recv(4096)
         print(msg.decode("ASCII"))
 
 
 def chat_send():
-    while True:
+    global end
+    while not end:
         inpt = input()
-        inpt = inpt+'\r\n'
+        inpt = inpt + '\r\n'
         #if not inpt:
             #inpt="\n"
         s.send(inpt.encode("ASCII"))
+        if inpt == "QUIT\r\n":
+            end = True
 
 
 host = input("Enter IP: ")

@@ -11,9 +11,9 @@ def chat_receive():
 def chat_send():
     while True:
         inpt = input()
-        inpt = inpt+'\n'
-        if not inpt:
-            inpt="\n"
+        inpt = inpt+'\r\n'
+        #if not inpt:
+            #inpt="\n"
         s.send(inpt.encode("ASCII"))
 
 

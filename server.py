@@ -4,29 +4,16 @@ import os
 import sys
 import pam
 
-# # pwd
-# dirpath = os.getcwd()
-# print("current directory is : " + dirpath)
-#
-# # cd pathname
-# # direct = input()
-# # dirpath = os.path.join(dirpath, direct)     #IMPLEMENT TRY CATCH
-#
-# # cd ..
-# print(os.path.abspath('..'))    # LIMIT
-#
-# # ls
-# print(os.listdir(dirpath))
-
 class comm_sock:
     def __init__(self, client):
         if not self.authenticate(client):
             client.send("Auth Failed").encode('ascii')
             return
         self.client = client
-        self.dirpath = "/home"
+        self.dirpath = "/home"                                          #try for windows as well
         client_thread = threading.Thread(target=self.cmd_process)
         client_thread.start()
+
 
     def authenticate(self, client):                                         #Fix formatting
         client.send("username: ".encode('ascii'))
@@ -42,14 +29,16 @@ class comm_sock:
             client.send(password.encode("ascii") )
         return pam.pam().authenticate(user, password)
 
+
     def reply(self, msg):
         self.client.send(msg.encode('ascii'))
+
 
     def cmd_process(self):
         while True:
             msg = self.client.recv(4096).decode('ascii')
 
-            print(msg)          #debugging
+            print(msg)                                          # debugging
 
             if msg == "LIST\r\n":                               # Directory and file colours
                 reply_msg = ""
@@ -77,16 +66,27 @@ class comm_sock:
                     os.chdir(os.path.join(self.dirpath, arg))        # Handle inexistent directories
                     self.dirpath = os.getcwd()
                 self.reply(self.dirpath + "\r\n")
+
+            elif msg[:3] == "MKD":
+                arg = msg[4:].strip()
+                if arg[0] == "\\":
+                    os.mkdir(arg)
+
+                else:
+                    os.mkdir(os.path.join(self.dirpath, arg))        # Handle existent directories
+                self.reply("Directory created\r\n")
+
             elif msg == "QUIT\r\n":
                 print("Goodbye!")
                 self.client.close()
                 break
         return
 
+
 def listener():
     global serversocket
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serversocket.bind(("localhost", 1111))
+    serversocket.bind(("localhost", 21))
     serversocket.listen(5)
     print("Waiting for client")
     while not end:

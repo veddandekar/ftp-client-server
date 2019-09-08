@@ -3,12 +3,12 @@ import threading
 import os
 import sys
 import pam
-
+import random
 class comm_sock:
     def __init__(self, client):
-        if not self.authenticate(client):
-            client.send("Auth Failed").encode('ascii')
-            return
+        # if not self.authenticate(client):
+        #     client.send("Auth Failed").encode('ascii')
+        #     return
         self.client = client
         self.dirpath = "/home"                                          #try for windows as well
         client_thread = threading.Thread(target=self.cmd_process)
@@ -33,6 +33,9 @@ class comm_sock:
     def reply(self, msg):
         self.client.send(msg.encode('ascii'))
 
+    def data_sock(self, datasocket):
+        data_client, data_addr = datasocket.accept()
+        print("Data connection establishes")
 
     def cmd_process(self):
         while True:
@@ -76,6 +79,18 @@ class comm_sock:
                     os.mkdir(os.path.join(self.dirpath, arg))        # Handle existent directories
                 self.reply("Directory created\r\n")
 
+            elif msg == "PASV\r\n":
+                port = random.randint(1024, 65535)
+                ip = socket.gethostbyname("localhost")
+                a1, a2, a3, a4 = ip.split(".")
+                # print(a1, p2, p3, p4, port)
+                datasocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                datasocket.bind(("localhost", port))
+                datasocket.listen(1)
+                data_thread = threading.Thread(target=self.data_sock, args=(datasocket,))
+                data_thread.start()
+                self.reply("227 Entering Passive Mode (" + a1 + ", " + a2 + ", " + a3 + ", " + a4 + ", " + str(int(port/256)) + ", " + str(int(port%256)) + ")")
+
             elif msg == "QUIT\r\n":
                 print("Goodbye!")
                 self.client.close()
@@ -84,15 +99,16 @@ class comm_sock:
 
 
 def listener():
-    global serversocket
+    global serversocket, end
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serversocket.bind(("localhost", 21))
+    serversocket.bind(("localhost", 2222))
     serversocket.listen(5)
     print("Waiting for client")
     while not end:
         client, addr = serversocket.accept()
         print("Received connection from ", addr)
         comm_sock(client)
+    print("SERVER SOCKET CLOSED")
     serversocket.close()
 
 

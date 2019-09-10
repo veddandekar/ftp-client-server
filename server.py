@@ -11,6 +11,7 @@ class comm_sock:
         #     return
         self.client = client
         self.dirpath = "/home"                                          #try for windows as well
+
         client_thread = threading.Thread(target=self.cmd_process)
         client_thread.start()
 
@@ -33,9 +34,13 @@ class comm_sock:
     def reply(self, msg):
         self.client.send(msg.encode('ascii'))
 
+    def data_reply(self, data):
+        self.data_client.send(data.encode('ascii'))
+
     def data_sock(self, datasocket):
-        data_client, data_addr = datasocket.accept()
-        print("Data connection establishes")
+        self.data_client, data_addr = datasocket.accept()
+        print("Data connection established")
+
 
     def cmd_process(self):
         while True:
@@ -47,7 +52,10 @@ class comm_sock:
                 reply_msg = ""
                 for x in os.listdir(self.dirpath):
                     reply_msg = reply_msg + x + "\r\n"
-                self.reply(reply_msg)
+                if self.data_client:                            #HANDLE ELSE
+                    self.data_reply(reply_msg)
+                else:
+                    print("NO CONNECTION TO SEND ON")
 
             elif msg == "PWD\r\n":
                 reply_msg = self.dirpath + "\r\n"
@@ -90,6 +98,7 @@ class comm_sock:
                 data_thread = threading.Thread(target=self.data_sock, args=(datasocket,))
                 data_thread.start()
                 self.reply("227 Entering Passive Mode (" + a1 + ", " + a2 + ", " + a3 + ", " + a4 + ", " + str(int(port/256)) + ", " + str(int(port%256)) + ")")
+                data_thread.join()
 
             elif msg == "QUIT\r\n":
                 print("Goodbye!")
@@ -101,7 +110,7 @@ class comm_sock:
 def listener():
     global serversocket, end
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serversocket.bind(("localhost", 2222))
+    serversocket.bind(("localhost", 1111))
     serversocket.listen(5)
     print("Waiting for client")
     while not end:

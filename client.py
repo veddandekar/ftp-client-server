@@ -7,7 +7,7 @@ class comm_sock:
         self.rcvstatus = False
         self.s = server
         self.msg = ""
-        send_thread = threading.Thread(target=self.cmd_send)
+        send_thread = threading.Thread(target=self.cmd_process)
         send_thread.start()
         rcv_thread = threading.Thread(target=self.cmd_rcv)
         rcv_thread.start()
@@ -24,7 +24,7 @@ class comm_sock:
             print(self.msg)
 
 
-    def cmd_send(self):
+    def cmd_process(self):
         while not self.end:
             inpt = input()
             if inpt == "ls":
@@ -45,8 +45,17 @@ class comm_sock:
                     self.s.send("LIST\r\n".encode("ascii"))
                     data_thread.join()
 
+            elif inpt[:6] == "rename":              #Implement diff ways to use this command
+                arg, arg_from, arg_to = inpt.split(" ")
+                self.s.send(("RNFR " + arg_from + "\r\n").encode("ascii"))
+                self.rcvstatus = False
+                while not self.rcvstatus:
+                    pass
+                if self.msg[:3] == "350":
+                    self.s.send(("RNTO " + arg_to + "\r\n").encode("ascii"))
 
-            inpt = inpt + '\r\n'
+            else:
+                inpt = inpt + '\r\n'
 
             self.s.send(inpt.encode("ascii"))
             self.rcvstatus = False

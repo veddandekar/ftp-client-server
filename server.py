@@ -4,7 +4,9 @@ import os
 import sys
 import pam
 import random
-class comm_sock:
+import shutil
+
+class comm_sock:                                                            #os.path.isfile("/path/to/file") <-- use for error checking
     def __init__(self, client):
         # if not self.authenticate(client):
         #     client.send("Auth Failed").encode('ascii')
@@ -87,6 +89,35 @@ class comm_sock:
                     os.mkdir(os.path.join(self.dirpath, arg))        # Handle existent directories
                 self.reply("Directory created\r\n")
 
+            elif msg[:3] == "RMD":
+                arg = msg[4:].strip()
+                if arg[0] == "\\":
+                    shutil.rmtree(arg)
+
+                else:
+                    shutil.rmtree(os.path.join(self.dirpath, arg))     # Handle inexistent directories
+                self.reply("Directory Deleted\r\n")
+
+            elif msg[:4] == "DELE":
+                arg = msg[5:].strip()
+                if arg[0] == "\\":
+                    os.remove(arg)
+
+                else:
+                    os.remove(os.path.join(self.dirpath, arg))     # Handle inexistent directories
+                self.reply("File Deleted\r\n")
+            elif msg[:4] == "RNFR":
+                arg_from = msg[5:].strip()
+
+                if os.path.isfile(os.path.join(self.dirpath, arg_from)):         #handle else
+                    self.reply("350 RFNR Accepted\r\n")
+                msg = self.client.recv(4096).decode('ascii')
+
+                if msg[:4] == "RNTO":
+                    arg_to = msg[5:].strip()
+                    os.rename(os.path.join(self.dirpath, arg_from), os.path.join(self.dirpath, arg_to))
+                    self.reply("File renamed\r\n")
+
             elif msg == "PASV\r\n":
                 port = random.randint(1024, 65535)
                 ip = socket.gethostbyname("localhost")
@@ -110,7 +141,7 @@ class comm_sock:
 def listener():
     global serversocket, end
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serversocket.bind(("localhost", 1111))
+    serversocket.bind(("localhost", 2222))
     serversocket.listen(5)
     print("Waiting for client")
     while not end:

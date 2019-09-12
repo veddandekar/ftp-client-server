@@ -12,6 +12,8 @@ class comm_sock:                                                            #os.
         #     client.send("Auth Failed").encode('ascii')
         #     return
         self.client = client
+        self.ascii = True
+        self.passive = True
         self.dirpath = "/home"                                          #try for windows as well
 
         client_thread = threading.Thread(target=self.cmd_process)
@@ -37,7 +39,7 @@ class comm_sock:                                                            #os.
         self.client.send(msg.encode('ascii'))
 
     def data_reply(self, data):
-        self.data_client.send(data.encode('ascii'))
+            self.data_client.send(data.encode('ascii'))
 
     def data_sock(self, datasocket):
         self.data_client, data_addr = datasocket.accept()
@@ -56,6 +58,7 @@ class comm_sock:                                                            #os.
                     reply_msg = reply_msg + x + "\r\n"
                 if self.data_client:                            #HANDLE ELSE
                     self.data_reply(reply_msg)
+                    self.data_client.close()
                 else:
                     print("NO CONNECTION TO SEND ON")
 
@@ -118,6 +121,26 @@ class comm_sock:                                                            #os.
                     os.rename(os.path.join(self.dirpath, arg_from), os.path.join(self.dirpath, arg_to))
                     self.reply("File renamed\r\n")
 
+            elif msg[:4] == "TYPE":
+                if msg[5] == 'A':
+                    self.ascii = True
+                    self.reply("Changed to ASCII mode")
+                elif msg[5] == 'I':
+                    self.ascii = False
+                    self.reply("Changed to Binary mode")
+
+            elif msg[:4] == "RETR":
+                arg = msg[5].strip()
+                if os.path.isfile(os.path.join(self.dirpath, arg)):
+                    f = open(dirpath + "/" + arg, "r")                           #handle failed file
+                    while True:
+                        chunk = f.read(1024)
+                        if not chunk:
+                            break
+                        self.data_reply(chunk)
+                self.reply("Transfer complete")
+
+
             elif msg == "PASV\r\n":
                 port = random.randint(1024, 65535)
                 ip = socket.gethostbyname("localhost")
@@ -128,11 +151,11 @@ class comm_sock:                                                            #os.
                 datasocket.listen(1)
                 data_thread = threading.Thread(target=self.data_sock, args=(datasocket,))
                 data_thread.start()
-                self.reply("227 Entering Passive Mode (" + a1 + ", " + a2 + ", " + a3 + ", " + a4 + ", " + str(int(port/256)) + ", " + str(int(port%256)) + ")")
+                self.reply("227 Entering Passive Mode (" + a1 + "," + a2 + "," + a3 + "," + a4 + "," + str(int(port/256)) + "," + str(int(port%256)) + ")")
                 data_thread.join()
 
             elif msg == "QUIT\r\n":
-                print("Goodbye!")
+                self.reply("Goodbye.")
                 self.client.close()
                 break
         return
@@ -141,7 +164,7 @@ class comm_sock:                                                            #os.
 def listener():
     global serversocket, end
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serversocket.bind(("localhost", 2222))
+    serversocket.bind(("localhost", 1111))
     serversocket.listen(5)
     print("Waiting for client")
     while not end:

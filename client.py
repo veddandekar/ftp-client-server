@@ -1,5 +1,6 @@
 import socket
 import threading
+import os
 
 class comm_sock:
     def __init__(self, server):
@@ -14,9 +15,27 @@ class comm_sock:
         rcv_thread.start()
         send_thread.join()
 
-    def data_rcv(self, data_conn):              #FILE RECEIVE AND LS RECEIVE SAME FUNCTION?????
-        data = data_conn.recv(4096).decode('ascii')
-        print(data)
+    def data_rcv(self, data_conn, file=None):              #HOW TO HANDLE EOF? OS dependant? Not Really.
+        data = ""
+        chunk = data_conn.recv(4096).decode('ascii')
+        while chunk:
+            data = data + chunk
+            chunk = data_conn.recv(4096).decode('ascii')
+        if not file:
+            print(data)
+        else:
+            f = open(os.getcwd() + "/" + file, "w")
+            f.write(data)
+            f.close()
+        data_conn.close()
+
+    def data_send(self, data_conn, file):
+        f = open(os.getcwd() + "/" + file, "r")
+        chunk = f.read(4096)
+        while chunk:
+            data_conn.send(chunk.encode('ascii'))
+            chunk = f.read(4096)
+        f.close()
         data_conn.close()
 
     def cmd_rcv(self):
@@ -32,7 +51,7 @@ class comm_sock:
 
             if inpt == "passive":
                 self.passive = not self.passive
-                print("Passive: " + self.passive)
+                print("Passive: " + str(self.passive))
 
             elif inpt == "ls":
                 if self.passive:                                    #handle for else active
@@ -62,25 +81,46 @@ class comm_sock:
                 if self.msg[:3] == "350":
                     self.s.send(("RNTO " + arg_to + "\r\n").encode("ascii"))
 
-            elif inpt[:3] == "get":
-                arg = inpt[4:].strip()
-                self.s.send("PASV\r\n".encode("ascii"))
-                self.rcvstatus = False
-                while not self.rcvstatus:
-                    pass
-                if self.msg[:3] == "227":
-                    l = self.msg.split("(")
-                    a1, a2, a3, a4, p1, p2 = l[1].split(",")
-                    p2 = p2.split(")")[0]
-                    data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    host = a1 + '.' + a2 + '.' + a3 + '.' + a4
-                    port = int(p1) * 256 + int(p2)
-                    data_sock.connect((host, port))
-                    data_thread = threading.Thread(target=self.data_rcv, args=(data_sock,))
-                    data_thread.start()
-                    self.s.send("RETR " + arg + "\r\n".encode("ascii"))
-                    data_thread.join()
+            elif inpt[:3] == "get":                                 #handle third argument
+                arg = str(inpt[4:].strip())
+                if self.passive:
+                    self.s.send("PASV\r\n".encode("ascii"))
+                    self.rcvstatus = False
+                    while not self.rcvstatus:
+                        pass
+                    if self.msg[:3] == "227":
+                        l = self.msg.split("(")
+                        a1, a2, a3, a4, p1, p2 = l[1].split(",")
+                        p2 = p2.split(")")[0]
+                        data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        host = a1 + '.' + a2 + '.' + a3 + '.' + a4
+                        port = int(p1) * 256 + int(p2)
+                        data_sock.connect((host, port))
+                        data_thread = threading.Thread(target=self.data_rcv, args=(data_sock, arg))
+                        data_thread.start()
+                        self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
+                        data_thread.join()
 
+            elif inpt[:3] == "put":
+                arg = str(inpt[4:].strip())
+                if self.passive:
+                    self.s.send("PASV\r\n".encode("ascii"))
+                    self.rcvstatus = False
+                    while not self.rcvstatus:
+                        pass
+                    if self.msg[:3] == "227":
+                        l = self.msg.split("(")
+                        a1, a2, a3, a4, p1, p2 = l[1].split(",")
+                        p2 = p2.split(")")[0]
+                        data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        host = a1 + '.' + a2 + '.' + a3 + '.' + a4
+                        port = int(p1) * 256 + int(p2)
+                        data_sock.connect((host, port))
+                        data_thread = threading.Thread(target=self.data_send, args=(data_sock, arg))
+                        data_thread.start()
+                        self.s.send(("STOR " + arg + "\r\n").encode("ascii"))
+                        data_thread.join()
+                        print("FILE SENT SUCCESSFULLY")
 
             else:
                 inpt = inpt + '\r\n'

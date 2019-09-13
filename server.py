@@ -38,8 +38,19 @@ class comm_sock:                                                            #os.
     def reply(self, msg):
         self.client.send(msg.encode('ascii'))
 
-    def data_reply(self, data):
-            self.data_client.send(data.encode('ascii'))
+    def data_send(self, data):
+        self.data_client.send(data.encode('ascii'))
+
+    def data_receive(self, file):
+        data = ""
+        chunk = self.data_client.recv(4096).decode('ascii')
+        while chunk:
+            data = data + chunk
+            chunk = self.data_client.recv(4096).decode('ascii')
+            f = open(self.dirpath + "/" + file, "w")
+            f.write(data)
+            f.close()
+        self.data_client.close()
 
     def data_sock(self, datasocket):
         self.data_client, data_addr = datasocket.accept()
@@ -57,7 +68,7 @@ class comm_sock:                                                            #os.
                 for x in os.listdir(self.dirpath):
                     reply_msg = reply_msg + x + "\r\n"
                 if self.data_client:                            #HANDLE ELSE
-                    self.data_reply(reply_msg)
+                    self.data_send(reply_msg)
                     self.data_client.close()
                 else:
                     print("NO CONNECTION TO SEND ON")
@@ -130,16 +141,16 @@ class comm_sock:                                                            #os.
                     self.reply("Changed to Binary mode")
 
             elif msg[:4] == "RETR":
-                arg = msg[5].strip()
+                arg = msg[5:].strip()
                 if os.path.isfile(os.path.join(self.dirpath, arg)):
-                    f = open(dirpath + "/" + arg, "r")                           #handle failed file
+                    f = open(self.dirpath + "/" + arg, "r")                           #handle failed file
                     while True:
-                        chunk = f.read(1024)
+                        chunk = f.read(4096)
                         if not chunk:
                             break
-                        self.data_reply(chunk)
+                        self.data_send(chunk)
+                    self.data_client.close()
                 self.reply("Transfer complete")
-
 
             elif msg == "PASV\r\n":
                 port = random.randint(1024, 65535)
@@ -152,6 +163,12 @@ class comm_sock:                                                            #os.
                 data_thread = threading.Thread(target=self.data_sock, args=(datasocket,))
                 data_thread.start()
                 self.reply("227 Entering Passive Mode (" + a1 + "," + a2 + "," + a3 + "," + a4 + "," + str(int(port/256)) + "," + str(int(port%256)) + ")")
+                data_thread.join()
+
+            elif msg[:4] == "STOR":
+                file = msg[5:].strip()
+                data_thread = threading.Thread(target=self.data_receive, args=(file,))          #DO WE REALLY NEED THESE THREADS?
+                data_thread.start()
                 data_thread.join()
 
             elif msg == "QUIT\r\n":

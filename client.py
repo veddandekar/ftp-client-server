@@ -17,28 +17,28 @@ class comm_sock:
         rcv_thread.start()
         send_thread.join()
 
-    def data_rcv(self, data_conn, file=None):              #HOW TO HANDLE EOF? OS dependant? Not Really.
+    def data_rcv(self, file=None):              #HOW TO HANDLE EOF? OS dependant? Not Really.
         data = ""
-        chunk = data_conn.recv(4096).decode('ascii')
+        chunk = self.data_server.recv(4096).decode('ascii')
         while chunk:
             data = data + chunk
-            chunk = data_conn.recv(4096).decode('ascii')
+            chunk = self.data_server.recv(4096).decode('ascii')
         if not file:
             print(data)
         else:
             f = open(os.getcwd() + "/" + file, "w")
             f.write(data)
             f.close()
-        data_conn.close()
+        self.data_server.close()
 
-    def data_send(self, data_conn, file):
+    def data_send(self, file):
         f = open(os.getcwd() + "/" + file, "r")
         chunk = f.read(4096)
         while chunk:
-            data_conn.send(chunk.encode('ascii'))
+            self.data_server.send(chunk.encode('ascii'))
             chunk = f.read(4096)
         f.close()
-        data_conn.close()
+        self.data_server.close()
 
 
     def data_sock(self, datasocket):
@@ -79,11 +79,12 @@ class comm_sock:
             l = self.msg.split("(")
             a1, a2, a3, a4, p1, p2 = l[1].split(",")
             p2 = p2.split(")")[0]
-            data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.data_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             host = a1 + '.' + a2 + '.' + a3 + '.' + a4
             port = int(p1) * 256 + int(p2)
-            data_sock.connect((host, port))
-            return data_sock
+            self.data_server.connect((host, port))
+            return "227"
+        return "1010"           #CHANGE TO CODE FOR FAILURE
 
     def cmd_process(self):
         while not self.end:
@@ -95,15 +96,15 @@ class comm_sock:
 
             elif inpt == "ls":
                 if self.passive:                                    #handle for else active
-                    data_sock = self.passive_conn()
-                    data_rcvthread = threading.Thread(target=self.data_rcv, args=(data_sock,))
-                    data_rcvthread.start()
-                    self.s.send("LIST\r\n".encode("ascii"))
-                    data_rcvthread.join()
+                    if self.passive_conn() == "227":
+                        data_rcvthread = threading.Thread(target=self.data_rcv)
+                        data_rcvthread.start()
+                        self.s.send("LIST\r\n".encode("ascii"))
+                        data_rcvthread.join()
                 else:
                     if self.active_conn() == "200":
                         self.s.send("LIST\r\n".encode("ascii"))
-                        self.data_rcv(self.data_server)
+                        self.data_rcv()
 
 
             elif inpt[:6] == "rename":              #Implement diff ways to use this command
@@ -118,14 +119,14 @@ class comm_sock:
             elif inpt[:3] == "get":                                 #handle third argument
                 arg = str(inpt[4:].strip())
                 if self.passive:
-                    data_sock = self.passive_conn()
-                    data_thread = threading.Thread(target=self.data_rcv, args=(data_sock, arg))
-                    data_thread.start()
-                    self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
-                    data_thread.join()
+                    if self.passive_conn() == "227":
+                        data_thread = threading.Thread(target=self.data_rcv, args=(arg, ))
+                        data_thread.start()
+                        self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
+                        data_thread.join()
                 else:
                     if self.active_conn() == "200":
-                        data_thread = threading.Thread(target=self.data_rcv, args=(self.data_server, arg))
+                        data_thread = threading.Thread(target=self.data_rcv, args=(arg, ))
                         data_thread.start()
                         self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
                         data_thread.join()
@@ -133,12 +134,20 @@ class comm_sock:
             elif inpt[:3] == "put":
                 arg = str(inpt[4:].strip())
                 if self.passive:
-                    data_sock = passive_conn()
-                    data_thread = threading.Thread(target=self.data_send, args=(data_sock, arg))
-                    data_thread.start()
-                    self.s.send(("STOR " + arg + "\r\n").encode("ascii"))
-                    data_thread.join()
-                    print("FILE SENT SUCCESSFULLY")
+                    if self.passive_conn() == "227":
+                        data_thread = threading.Thread(target=self.data_send, args=(arg, ))
+                        data_thread.start()
+                        self.s.send(("STOR " + arg + "\r\n").encode("ascii"))
+                        data_thread.join()
+                        print("FILE SENT SUCCESSFULLY")
+                else:
+                    if self.active_conn() == "200":
+                        data_thread = threading.Thread(target=self.data_send, args=(arg, ))
+                        data_thread.start()
+                        self.s.send(("STOR " + arg + "\r\n").encode("ascii"))
+                        data_thread.join()
+                        print("FILE SENT SUCCESSFULLY")
+
 
             else:
                 inpt = inpt + '\r\n'

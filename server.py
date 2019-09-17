@@ -171,6 +171,14 @@ class comm_sock:                                                            #os.
                 data_thread.start()
                 data_thread.join()
 
+            elif msg[:4] == "PORT":
+                a1, a2, a3, a4, p1, p2 = msg[5:].split(",")
+                self.data_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                host = a1 + '.' + a2 + '.' + a3 + '.' + a4
+                port = int(p1) * 256 + int(p2)
+                self.data_client.connect((host, port))
+                self.reply("200 PORT command succesful. Consider using passive mode\r\n")
+
             elif msg == "QUIT\r\n":
                 self.reply("Goodbye.")
                 self.client.close()

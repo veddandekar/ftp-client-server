@@ -8,9 +8,9 @@ import shutil
 
 class comm_sock:                                                            #os.path.isfile("/path/to/file") <-- use for error checking
     def __init__(self, client):
-        # if not self.authenticate(client):
-        #     client.send("Auth Failed").encode('ascii')
-        #     return
+        if not self.authenticate(client):
+            client.send("Auth Failed").encode('ascii')
+            return
         self.client = client
         self.ascii = True
         self.passive = True
@@ -174,6 +174,7 @@ class comm_sock:                                                            #os.
             elif msg[:4] == "PORT":
                 a1, a2, a3, a4, p1, p2 = msg[5:].split(",")
                 self.data_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.data_client.bind(("localhost", 1112))
                 host = a1 + '.' + a2 + '.' + a3 + '.' + a4
                 port = int(p1) * 256 + int(p2)
                 self.data_client.connect((host, port))

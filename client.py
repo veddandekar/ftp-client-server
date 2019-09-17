@@ -94,7 +94,7 @@ class comm_sock:
                 self.passive = not self.passive
                 print("Passive: " + str(self.passive))
 
-            elif inpt == "ls":
+            elif inpt == "ls" or inpt == "dir":
                 if self.passive:                                    #handle for else active
                     if self.passive_conn() == "227":
                         data_rcvthread = threading.Thread(target=self.data_rcv)
@@ -115,6 +115,34 @@ class comm_sock:
                     pass
                 if self.msg[:3] == "350":
                     self.s.send(("RNTO " + arg_to + "\r\n").encode("ascii"))
+
+            elif inpt[:3] == "pwd":
+                self.s.send("PWD\r\n".encode('ascii'))
+
+            elif inpt[:4] == "cdup":
+                self.s.send("CDUP\r\n".encode('ascii'))
+
+            elif inpt[:2] == "cd":
+                self.s.send(("CWD " + inpt[3:] + "\r\n").encode('ascii'))
+
+            elif inpt[:5] == "mkdir":
+                self.s.send(("MKD " + inpt[6:] + "\r\n").encode('ascii'))
+
+            elif inpt[:5] == "rmdir":
+                self.s.send(("RMD " + inpt[6:] + "\r\n").encode('ascii'))
+
+            elif inpt[:6] == "delete":
+                self.s.send(("DELE " + inpt[7:] + "\r\n").encode('ascii'))
+
+            elif inpt == "ascii":
+                self.s.send(("TYPE A\r\n").encode('ascii'))
+
+            elif inpt == "binary" or inpt == "image":
+                self.s.send(("TYPE I\r\n").encode('ascii'))
+
+            elif inpt == "exit":                                      #handle bye and close
+                self.s.send(("QUIT\r\n").encode('ascii'))
+                self.end = True
 
             elif inpt[:3] == "get":                                 #handle third argument
                 arg = str(inpt[4:].strip())
@@ -149,13 +177,10 @@ class comm_sock:
                         print("FILE SENT SUCCESSFULLY")
 
 
-            else:
-                inpt = inpt + '\r\n'
-                self.s.send(inpt.encode("ascii"))
-                self.rcvstatus = False
-
-            if inpt == "QUIT\r\n":                              #bye and close also do the exact same
-                self.end = True
+            # else:
+            #     inpt = inpt + '\r\n'
+            #     self.s.send(inpt.encode("ascii"))
+            #     self.rcvstatus = False
 
 if __name__ == "__main__":
     host = input("Enter IP: ")

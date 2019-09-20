@@ -19,23 +19,26 @@ class comm_sock:
 
     def data_rcv(self, file=None):              #HOW TO HANDLE EOF? OS dependant? Not Really.
         data = ""
-        chunk = self.data_server.recv(4096).decode('ascii')
-        while chunk:
-            data = data + chunk
-            chunk = self.data_server.recv(4096).decode('ascii')
         if not file:
+            chunk = self.data_server.recv(4096).decode('ascii')
+            while chunk:
+                data = data + chunk
+                chunk = self.data_server.recv(4096).decode('ascii')
             print(data)
         else:
-            f = open(os.getcwd() + "/" + file, "w")
-            f.write(data)
+            f = open(os.getcwd() + "/" + file, "ba+")
+            chunk = self.data_server.recv(4096)
+            while chunk:
+                f.write(chunk)
+                chunk = self.data_server.recv(4096)
             f.close()
         self.data_server.close()
 
     def data_send(self, file):
-        f = open(os.getcwd() + "/" + file, "r")
+        f = open(os.getcwd() + "/" + file, "rb")
         chunk = f.read(4096)
         while chunk:
-            self.data_server.send(chunk.encode('ascii'))
+            self.data_server.send(chunk)
             chunk = f.read(4096)
         f.close()
         self.data_server.close()
@@ -177,10 +180,10 @@ class comm_sock:
                         print("FILE SENT SUCCESSFULLY")
 
 
-            # else:
-            #     inpt = inpt + '\r\n'
-            #     self.s.send(inpt.encode("ascii"))
-            #     self.rcvstatus = False
+            else:
+                inpt = inpt + '\r\n'
+                self.s.send(inpt.encode("ascii"))
+                self.rcvstatus = False
 
 if __name__ == "__main__":
     host = input("Enter IP: ")

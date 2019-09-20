@@ -8,9 +8,9 @@ import shutil
 
 class comm_sock:                                                            #os.path.isfile("/path/to/file") <-- use for error checking
     def __init__(self, client):
-        if not self.authenticate(client):
-            client.send("Auth Failed").encode('ascii')
-            return
+        # if not self.authenticate(client):
+        #     client.send("Auth Failed").encode('ascii')
+        #     return
         self.client = client
         self.ascii = True
         self.passive = True
@@ -39,17 +39,17 @@ class comm_sock:                                                            #os.
         self.client.send(msg.encode('ascii'))
 
     def data_send(self, data):
-        self.data_client.send(data.encode('ascii'))
+        self.data_client.send(data)
 
     def data_receive(self, file):
         data = ""
-        chunk = self.data_client.recv(4096).decode('ascii')
+        chunk = self.data_client.recv(4096)
+        f = open(self.dirpath + "/" + file, "ba+")
         while chunk:
-            data = data + chunk
-            chunk = self.data_client.recv(4096).decode('ascii')
-            f = open(self.dirpath + "/" + file, "w")
-            f.write(data)
-            f.close()
+            # data = data + chunk
+            f.write(chunk)
+            chunk = self.data_client.recv(4096)
+        f.close()
         self.data_client.close()
 
     def data_sock(self, datasocket):
@@ -143,7 +143,7 @@ class comm_sock:                                                            #os.
             elif msg[:4] == "RETR":
                 arg = msg[5:].strip()
                 if os.path.isfile(os.path.join(self.dirpath, arg)):
-                    f = open(self.dirpath + "/" + arg, "r")                           #handle failed file
+                    f = open(self.dirpath + "/" + arg, "rb")                           #handle failed file
                     while True:
                         chunk = f.read(4096)
                         if not chunk:
@@ -190,7 +190,7 @@ class comm_sock:                                                            #os.
 def listener():
     global serversocket, end
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serversocket.bind(("localhost", 1111))
+    serversocket.bind(("localhost", 2222))
     serversocket.listen(5)
     print("Waiting for client")
     while not end:

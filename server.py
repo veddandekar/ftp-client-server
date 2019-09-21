@@ -12,7 +12,7 @@ class comm_sock:                                                            #os.
         #     client.send("Auth Failed").encode('ascii')
         #     return
         self.client = client
-        self.ascii = True
+        self.ascii = False
         self.passive = True
         self.dirpath = "/home"                                          #try for windows as well
 
@@ -39,7 +39,10 @@ class comm_sock:                                                            #os.
         self.client.send(msg.encode('ascii'))
 
     def data_send(self, data):
-        self.data_client.send(data)
+        if not self.ascii:
+            self.data_client.send(data)
+        else:
+            self.data_client.send(data.encode('ascii'))
 
     def data_receive(self, file):
         data = ""
@@ -135,10 +138,10 @@ class comm_sock:                                                            #os.
             elif msg[:4] == "TYPE":
                 if msg[5] == 'A':
                     self.ascii = True
-                    self.reply("Changed to ASCII mode")
+                    self.reply("200 Switching to ASCII mode")
                 elif msg[5] == 'I':
                     self.ascii = False
-                    self.reply("Changed to Binary mode")
+                    self.reply("200 Switching to Binary mode")
 
             elif msg[:4] == "RETR":
                 arg = msg[5:].strip()
@@ -174,7 +177,7 @@ class comm_sock:                                                            #os.
             elif msg[:4] == "PORT":
                 a1, a2, a3, a4, p1, p2 = msg[5:].split(",")
                 self.data_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.data_client.bind(("localhost", 1112))
+                self.data_client.bind(("localhost", 1113))
                 host = a1 + '.' + a2 + '.' + a3 + '.' + a4
                 port = int(p1) * 256 + int(p2)
                 self.data_client.connect((host, port))

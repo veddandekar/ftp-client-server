@@ -2,6 +2,7 @@ import socket
 import threading
 import os
 import random
+import sys
 
 
 class comm_sock:
@@ -11,6 +12,7 @@ class comm_sock:
         self.s = server
         self.msg = ""
         self.passive = True
+        self.ascii = False
         send_thread = threading.Thread(target=self.cmd_process)
         send_thread.start()
         rcv_thread = threading.Thread(target=self.cmd_rcv)
@@ -26,12 +28,20 @@ class comm_sock:
                 chunk = self.data_server.recv(4096).decode('ascii')
             print(data)
         else:
-            f = open(os.getcwd() + "/" + file, "ba+")
-            chunk = self.data_server.recv(4096)
-            while chunk:
-                f.write(chunk)
+            if not self.ascii:
+                f = open(os.getcwd() + "/" + file, "ba+")
                 chunk = self.data_server.recv(4096)
-            f.close()
+                while chunk:
+                    f.write(chunk)
+                    chunk = self.data_server.recv(4096)
+                f.close()
+            else:
+                f = open(os.getcwd() + "/" + file, "a+")
+                chunk = self.data_server.recv(4096).decode('ascii')
+                while chunk:
+                    f.write(chunk)
+                    chunk = self.data_server.recv(4096).decode('ascii')
+                f.close()
         self.data_server.close()
 
     def data_send(self, file):
@@ -102,12 +112,24 @@ class comm_sock:
                     if self.passive_conn() == "227":
                         data_rcvthread = threading.Thread(target=self.data_rcv)
                         data_rcvthread.start()
-                        self.s.send("LIST\r\n".encode("ascii"))
-                        data_rcvthread.join()
+                        self.s.send("TYPE A\r\n".encode("ascii"))
+                        self.ascii = True
+                        self.rcvstatus = False
+                        while not self.rcvstatus:
+                            pass
+                        if self.msg[:3] == '200':
+                            self.s.send("LIST\r\n".encode("ascii"))
+                            data_rcvthread.join()
                 else:
                     if self.active_conn() == "200":
-                        self.s.send("LIST\r\n".encode("ascii"))
-                        self.data_rcv()
+                        self.s.send("TYPE A\r\n".encode("ascii"))
+                        self.ascii = True
+                        self.rcvstatus = False
+                        while not self.rcvstatus:
+                            pass
+                        if self.msg[:3] == '200':
+                            self.s.send("LIST\r\n".encode("ascii"))
+                            self.data_rcv()
 
 
             elif inpt[:6] == "rename":              #Implement diff ways to use this command

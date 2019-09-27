@@ -13,10 +13,31 @@ class comm_sock:
         self.msg = ""
         self.passive = True
         self.ascii = False
+        self.auth = False
         send_thread = threading.Thread(target=self.cmd_process)
         send_thread.start()
         rcv_thread = threading.Thread(target=self.cmd_rcv)
         rcv_thread.start()
+        while not self.rcvstatus:
+            pass
+        if self.msg[:3] == '220':
+            name = input('Name: ')
+            self.rcvstatus = False
+            a = "USER " + name + "\r\n"
+            print(a)
+            self.s.send(a.encode('ascii'))
+            while not self.rcvstatus:
+                pass
+            if self.msg[:3] == '331':
+                password = input('password: ')
+                self.rcvstatus = False
+                self.s.send(("PASS " + password + "\r\n").encode('ascii'))
+                while not self.rcvstatus:
+                    pass
+                if not self.msg[:3] == '230':
+                    print("invalid login")
+                    self.end = True
+                    return
         send_thread.join()
 
     def data_rcv(self, file=None):              #HOW TO HANDLE EOF? OS dependant? Not Really.
@@ -99,6 +120,7 @@ class comm_sock:
             return "227"
         return "1010"           #CHANGE TO CODE FOR FAILURE
 
+
     def cmd_process(self):
         while not self.end:
             inpt = input()
@@ -131,8 +153,6 @@ class comm_sock:
                         if self.msg[:3] == '200':
                             self.s.send("LIST\r\n".encode("ascii"))
                             self.data_rcv()
-
-
 
             elif inpt[:6] == "rename":
                 arg = inpt.split(" ")

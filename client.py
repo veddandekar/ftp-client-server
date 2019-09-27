@@ -14,8 +14,6 @@ class comm_sock:
         self.passive = True
         self.ascii = False
         self.auth = False
-        send_thread = threading.Thread(target=self.cmd_process)
-        send_thread.start()
         rcv_thread = threading.Thread(target=self.cmd_rcv)
         rcv_thread.start()
         while not self.rcvstatus:
@@ -23,9 +21,7 @@ class comm_sock:
         if self.msg[:3] == '220':
             name = input('Name: ')
             self.rcvstatus = False
-            a = "USER " + name + "\r\n"
-            print(a)
-            self.s.send(a.encode('ascii'))
+            self.s.send(("USER " + name + "\r\n").encode('ascii'))
             while not self.rcvstatus:
                 pass
             if self.msg[:3] == '331':
@@ -38,6 +34,8 @@ class comm_sock:
                     print("invalid login")
                     self.end = True
                     return
+        send_thread = threading.Thread(target=self.cmd_process)
+        send_thread.start()
         send_thread.join()
 
     def data_rcv(self, file=None):              #HOW TO HANDLE EOF? OS dependant? Not Really.
@@ -138,7 +136,6 @@ class comm_sock:
                         self.rcvstatus = False
                         self.s.send("TYPE A\r\n".encode("ascii"))
                         while not self.rcvstatus:
-                            print("waiting for rcvstatus")
                             pass
                         if self.msg[:3] == '200':
                             self.s.send("LIST\r\n".encode("ascii"))
@@ -239,10 +236,10 @@ class comm_sock:
                         print("FILE SENT SUCCESSFULLY")
 
 
-            else:
-                inpt = inpt + '\r\n'
-                self.rcvstatus = False
-                self.s.send(inpt.encode("ascii"))
+            # else:
+            #     inpt = inpt + '\r\n'
+            #     self.rcvstatus = False
+            #     self.s.send(inpt.encode("ascii"))
 
 
 if __name__ == "__main__":

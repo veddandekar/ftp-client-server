@@ -8,12 +8,11 @@ import shutil
 
 class comm_sock:                                                            #os.path.isfile("/path/to/file") <-- use for error checking
     def __init__(self, client):
-        client.send("220 connection established FTP".encode('ascii'))
+        client.send("220 connected".encode('ascii'))
         if self.authenticate(client):
-            client.send("230 success\r\n".encode('ascii'))
-            return
+            client.send("230 login successful\r\n".encode('ascii'))
         else:
-            client.send("Login unsuccessful\r\n".encode('ascii'))
+            client.send("login failed\r\n".encode('ascii'))
         self.client = client
         self.ascii = False
         self.passive = True
@@ -23,15 +22,14 @@ class comm_sock:                                                            #os.
         client_thread.start()
 
 
-    def authenticate(self, client):                                         #Fix formatting **use pwd
+    def authenticate(self, client):                                         #Fix formatting
         msg = client.recv(4096).decode('ascii')
-        print(msg)
-        # if msg[:4] == "USER":
-        user = msg[5:].strip()
-        client.send("331 User okay".encode("ascii"))                      #331 USER OK
-        msg = client.recv(4096).decode('ascii')
-        # if msg[:4] == "PASS":
-        password = msg[5:].strip()
+        if msg[:4] == "USER":
+            user = msg[5:].strip()
+            client.send("331 Please specify the password".encode("ascii"))
+            msg = client.recv(4096).decode('ascii')
+            if msg[:4] == "PASS":
+                password = msg[5:].strip()
         return pam.pam().authenticate(user, password)
 
 

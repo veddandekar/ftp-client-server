@@ -112,19 +112,20 @@ class comm_sock:
                     if self.passive_conn() == "227":
                         data_rcvthread = threading.Thread(target=self.data_rcv)
                         data_rcvthread.start()
-                        self.s.send("TYPE A\r\n".encode("ascii"))
                         self.ascii = True
                         self.rcvstatus = False
+                        self.s.send("TYPE A\r\n".encode("ascii"))
                         while not self.rcvstatus:
+                            print("waiting for rcvstatus")
                             pass
                         if self.msg[:3] == '200':
                             self.s.send("LIST\r\n".encode("ascii"))
                             data_rcvthread.join()
                 else:
                     if self.active_conn() == "200":
+                        self.rcvstatus = False
                         self.s.send("TYPE A\r\n".encode("ascii"))
                         self.ascii = True
-                        self.rcvstatus = False
                         while not self.rcvstatus:
                             pass
                         if self.msg[:3] == '200':
@@ -132,10 +133,20 @@ class comm_sock:
                             self.data_rcv()
 
 
-            elif inpt[:6] == "rename":              #Implement diff ways to use this command
-                arg, arg_from, arg_to = inpt.split(" ")
-                self.s.send(("RNFR " + arg_from + "\r\n").encode("ascii"))
+
+            elif inpt[:6] == "rename":
+                arg = inpt.split(" ")
+                if len(arg) == 1:  # NEW
+                    arg_from = input("from-name: ")
+                    arg_to = input("to-name: ")
+                elif len(arg) == 2:
+                    arg_from = arg[1]
+                    arg_to = input("to-name: ")
+                else:
+                    arg_from = arg[1]
+                    arg_to = arg[2]
                 self.rcvstatus = False
+                self.s.send(("RNFR " + arg_from + "\r\n").encode("ascii"))
                 while not self.rcvstatus:
                     pass
                 if self.msg[:3] == "350":
@@ -171,9 +182,15 @@ class comm_sock:
 
             elif inpt[:3] == "get":                                 #handle third argument
                 arg = str(inpt[4:].strip())
+                if len(arg) == 2:
+                    fname = arg[1]
+                    arg = arg[0]
+                else:
+                    fname = arg
+
                 if self.passive:
                     if self.passive_conn() == "227":
-                        data_thread = threading.Thread(target=self.data_rcv, args=(arg, ))
+                        data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
                         data_thread.start()
                         self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
                         data_thread.join()
@@ -204,8 +221,9 @@ class comm_sock:
 
             else:
                 inpt = inpt + '\r\n'
-                self.s.send(inpt.encode("ascii"))
                 self.rcvstatus = False
+                self.s.send(inpt.encode("ascii"))
+
 
 if __name__ == "__main__":
     host = input("Enter IP: ")
@@ -215,3 +233,4 @@ if __name__ == "__main__":
     s.connect((host, port))                                     #Error handling
     comm_sock(s)
     s.close()
+

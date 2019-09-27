@@ -177,6 +177,7 @@ class comm_sock:                                                            #os.
             elif msg[:4] == "PORT":
                 a1, a2, a3, a4, p1, p2 = msg[5:].split(",")
                 self.data_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.data_client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 self.data_client.bind(("localhost", 1113))
                 host = a1 + '.' + a2 + '.' + a3 + '.' + a4
                 port = int(p1) * 256 + int(p2)
@@ -193,6 +194,7 @@ class comm_sock:                                                            #os.
 def listener():
     global serversocket, end
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     serversocket.bind(("localhost", 2222))
     serversocket.listen(5)
     print("Waiting for client")

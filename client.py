@@ -143,8 +143,8 @@ class comm_sock:
                 else:
                     if self.active_conn() == "200":
                         self.rcvstatus = False
-                        self.s.send("TYPE A\r\n".encode("ascii"))
                         self.ascii = True
+                        self.s.send("TYPE A\r\n".encode("ascii"))
                         while not self.rcvstatus:
                             pass
                         if self.msg[:3] == '200':
@@ -247,7 +247,9 @@ if __name__ == "__main__":
     port = int(input("Enter Port: "))
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print("Trying "+ host)
     s.connect((host, port))                                     #Error handling
+    print("Connected to " + host + ":" + str(port))
     comm_sock(s)
     s.close()
 

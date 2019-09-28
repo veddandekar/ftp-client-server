@@ -8,11 +8,11 @@ import shutil
 
 class comm_sock:                                                            #os.path.isfile("/path/to/file") <-- use for error checking
     def __init__(self, client):
-        client.send("220 connected".encode('ascii'))
+        client.send("220 (ChiaVedu 1.0)".encode('ascii'))
         if self.authenticate(client):
-            client.send("230 login successful\r\n".encode('ascii'))
+            client.send("230 login successful.\r\n".encode('ascii'))
         else:
-            client.send("login failed\r\n".encode('ascii'))
+            client.send("login failed.\r\n".encode('ascii'))
         self.client = client
         self.ascii = False
         self.passive = True
@@ -55,7 +55,7 @@ class comm_sock:                                                            #os.
 
     def data_sock(self, datasocket):
         self.data_client, data_addr = datasocket.accept()
-        print("Data connection established")
+        print("Data connection established.")
 
 
     def cmd_process(self):
@@ -65,6 +65,7 @@ class comm_sock:                                                            #os.
             print(msg)                                          # debugging
 
             if msg == "LIST\r\n":                               # Directory and file colours
+                self.reply("150 Here comes the directory listing.\r\n")
                 reply_msg = ""
                 for x in os.listdir(self.dirpath):
                     reply_msg = reply_msg + x + "\r\n"

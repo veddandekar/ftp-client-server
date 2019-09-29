@@ -19,7 +19,8 @@ class comm_sock:                                                            #os.
         self.dirpath = os.getenv("HOME")                                         #try for windows as well
         client_thread = threading.Thread(target=self.cmd_process)
         client_thread.start()
-
+        client_thread.join()
+        return
 
     def authenticate(self, client):                                         #Fix formatting
         msg = client.recv(4096).decode('ascii')
@@ -33,7 +34,7 @@ class comm_sock:                                                            #os.
 
 
     def reply(self, msg):
-        self.client.send(msg.encode('ascii'))
+        self.client.send((msg + "\r\n").encode('ascii'))
 
 
     def data_send(self, data):
@@ -71,24 +72,23 @@ class comm_sock:                                                            #os.
     def cmd_process(self):
         while True:
             msg = self.client.recv(4096).decode('ascii')
-
+            if not msg:
+                self.client.close()
+                print("A client has lost connection.")
+                return
             print(msg)                                          # debugging
 
             if msg == "LIST\r\n":                               # Directory and file colours
-                self.reply("150 Here comes the directory listing.\r\n")
+                self.reply("150 Here comes the directory listing.")
                 reply_msg = ""
                 for x in os.listdir(self.dirpath):
                     reply_msg = reply_msg + x + "\r\n"
-                if self.data_client:                            #HANDLE ELSE
-                    self.data_send(reply_msg)
-                    self.data_client.close()
-                    self.reply("226 Directory send OK.\r\n")
-
-                else:
-                    print("NO CONNECTION TO SEND ON")
+                self.data_send(reply_msg)
+                self.data_client.close()
+                self.reply("226 Directory send OK.")
 
             elif msg == "PWD\r\n":
-                reply_msg = "257 \"" + self.dirpath + "\" is the current directory.\r\n"
+                reply_msg = "257 \"" + self.dirpath + "\" is the current directory."
                 self.reply(reply_msg)
 
             elif msg == "CDUP\r\n":
@@ -96,7 +96,7 @@ class comm_sock:                                                            #os.
                 os.chdir(os.path.abspath('..'))
                 self.dirpath = os.getcwd()
                 # reply_msg = self.dirpath + "\r\n"
-                self.reply("250 Directory successfully changed to \"" + self.dirpath + "\"\r\n")
+                self.reply("250 Directory successfully changed to \"" + self.dirpath + "\"")
 
             elif msg[:3] == "CWD":
                 arg = msg[4:].strip()
@@ -106,14 +106,14 @@ class comm_sock:                                                            #os.
                     try:
                         os.chdir(arg)
                         self.dirpath = os.getcwd()
-                        self.reply("250 Directory successfully changed to \"" + self.dirpath + "\"\r\n")
+                        self.reply("250 Directory successfully changed to \"" + self.dirpath + "\"")
                     except:
                         self.reply("550 Failed to change directory.")
                 else:
                     try:
                         os.chdir(os.path.join(self.dirpath, arg))
                         self.dirpath = os.getcwd()
-                        self.reply("250 Directory successfully changed to \"" + self.dirpath + "\"\r\n")
+                        self.reply("250 Directory successfully changed to \"" + self.dirpath + "\"")
                     except:
                         self.reply("550 Failed to change directory.")
             elif msg[:3] == "MKD":
@@ -121,61 +121,61 @@ class comm_sock:                                                            #os.
                 if arg[0] == "\\":
                     try:
                         os.mkdir(arg)
-                        self.reply("257 \"" + os.path.join(self.dirpath, arg) + "\" created.\r\n")
+                        self.reply("257 \"" + os.path.join(self.dirpath, arg) + "\" created.")
                     except:
-                        self.reply("550 Create directory operation failed.\r\n")
+                        self.reply("550 Create directory operation failed.")
 
                 else:
                     try:
                         os.mkdir(os.path.join(self.dirpath, arg))
-                        self.reply("257 \"" + os.path.join(self.dirpath, arg) + "\" created.\r\n")
+                        self.reply("257 \"" + os.path.join(self.dirpath, arg) + "\" created.")
                     except:
-                        self.reply("550 Create directory operation failed.\r\n")
+                        self.reply("550 Create directory operation failed.")
 
             elif msg[:3] == "RMD":
                 arg = msg[4:].strip()
                 if arg[0] == "\\":
                     try:
                         shutil.rmtree(arg)
-                        self.reply("250 Remove directory operation successful\r\n")
+                        self.reply("250 Remove directory operation successful")
                     except:
-                        self.reply("550 Remove directory operation failed.\r\n")
+                        self.reply("550 Remove directory operation failed.")
                 else:
                     try:
                         shutil.rmtree(os.path.join(self.dirpath, arg))
-                        self.reply("250 remove directory operation successful\r\n")
+                        self.reply("250 remove directory operation successful")
                     except:
-                        self.reply("550 Remove directory operation failed.\r\n")
+                        self.reply("550 Remove directory operation failed.")
 
             elif msg[:4] == "DELE":
                 arg = msg[5:].strip()
                 if arg[0] == "\\":
                     try:
                         os.remove(arg)
-                        self.reply("250 Delete operation successful.\r\n")
+                        self.reply("250 Delete operation successful.")
                     except:
-                        self.reply("550 Delete operation failed.\r\n")
+                        self.reply("550 Delete operation failed.")
                 else:
                     try:
                         os.remove(os.path.join(self.dirpath, arg))     # Handle inexistent directories
-                        self.reply("250 Delete operation successful.\r\n")
+                        self.reply("250 Delete operation successful.")
                     except:
-                        self.reply("550 Delete operation failed.\r\n")
+                        self.reply("550 Delete operation failed.")
 
             elif msg[:4] == "RNFR":
                 arg_from = msg[5:].strip()
 
                 if os.path.isfile(os.path.join(self.dirpath, arg_from)):         #handle else
-                    self.reply("350 Ready for RNTO.\r\n")
+                    self.reply("350 Ready for RNTO.")
 
                     msg = self.client.recv(4096).decode('ascii')
 
                     if msg[:4] == "RNTO":
                         arg_to = msg[5:].strip()
                         os.rename(os.path.join(self.dirpath, arg_from), os.path.join(self.dirpath, arg_to))
-                        self.reply("250 rename successful.\r\n")
+                        self.reply("250 rename successful.")
                 else:
-                    self.reply("550 RNFR command failed.\r\n")
+                    self.reply("550 RNFR command failed.")
 
             elif msg[:4] == "TYPE":
                 if msg[5] == 'A':
@@ -220,9 +220,9 @@ class comm_sock:                                                            #os.
                 file = msg[5:].strip()
                 data_thread = threading.Thread(target=self.data_receive, args=(file,))          #DO WE REALLY NEED THESE THREADS?
                 data_thread.start()
-                self.reply("150 OK to send data.\r\n")
+                self.reply("150 OK to send data.")
                 data_thread.join()
-                self.reply(("226 Transfer complete.\r\n"))      #check order of no of bytes sent and 226 code.
+                self.reply(("226 Transfer complete."))      #check order of no of bytes sent and 226 code.
 
             elif msg[:4] == "PORT":
                 a1, a2, a3, a4, p1, p2 = msg[5:].split(",")
@@ -232,10 +232,11 @@ class comm_sock:                                                            #os.
                 host = a1 + '.' + a2 + '.' + a3 + '.' + a4
                 port = int(p1) * 256 + int(p2)
                 self.data_client.connect((host, port))
-                self.reply("200 PORT command succesful. Consider using passive mode\r\n")
+                self.reply("200 PORT command succesful. Consider using passive mode")
 
             elif msg == "QUIT\r\n":
                 self.reply("Goodbye.")
+                print("Client disconnected.")
                 self.client.close()
                 break
         return

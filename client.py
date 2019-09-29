@@ -36,7 +36,7 @@ class comm_sock:
                     return
         send_thread = threading.Thread(target=self.cmd_process)
         send_thread.start()
-        send_thread.join()
+        rcv_thread.join()
 
     def data_rcv(self, file=None):              #HOW TO HANDLE EOF? OS dependant? Not Really.
         data = ""
@@ -83,6 +83,7 @@ class comm_sock:
 
 
     def data_sock(self, datasocket):
+        print("entered")
         self.data_server, data_addr = datasocket.accept()
         print("Data connection established")
 
@@ -90,6 +91,10 @@ class comm_sock:
     def cmd_rcv(self):
         while not self.end:
             self.msg = self.s.recv(4096).decode('ascii')
+            if not self.msg:
+                print("Lost connection to server.")
+                self.end = True
+                return
             self.rcvstatus = True
             print(self.msg)
 
@@ -100,11 +105,12 @@ class comm_sock:
         a1, a2, a3, a4 = ip.split(".")
         datasocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         datasocket.bind(("localhost", port))
+        print(port)
         datasocket.listen(1)
         data_thread = threading.Thread(target=self.data_sock, args=(datasocket,))
+        self.rcvstatus = False
         data_thread.start()
         self.s.send(("PORT " + a1 + "," + a2 + "," + a3 + "," + a4 + "," + str(int(port/256)) + "," + str(int(port%256)) + "\r\n").encode('ascii'))
-        self.rcvstatus = False
         data_thread.join()
         while not self.rcvstatus:
             pass
@@ -112,8 +118,8 @@ class comm_sock:
 
 
     def passive_conn(self):
-        self.s.send("PASV\r\n".encode("ascii"))
         self.rcvstatus = False
+        self.s.send("PASV\r\n".encode("ascii"))
         while not self.rcvstatus:
             pass
         if self.msg[:3] == "227":
@@ -154,15 +160,12 @@ class comm_sock:
                         while not self.rcvstatus:
                             pass
                         if self.msg[:3] == '200':
-                            self.rcvstatus = False
                             self.s.send("LIST\r\n".encode("ascii"))
-                            while not self.rcvstatus:
-                                pass
-                            if self.msg[:3] == '150':               #problem here
-                                data_rcvthread.start()
-                                data_rcvthread.join()
+                            data_rcvthread.start()
+                            data_rcvthread.join()
                 else:
                     if self.active_conn() == "200":
+                        print("TEST")
                         self.rcvstatus = False
                         self.ascii = True
                         self.s.send("TYPE A\r\n".encode("ascii"))

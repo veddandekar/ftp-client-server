@@ -93,8 +93,8 @@ class comm_sock:                                                            #os.
                 os.chdir(self.dirpath)
                 os.chdir(os.path.abspath('..'))
                 self.dirpath = os.getcwd()
-                reply_msg = self.dirpath + "\r\n"
-                self.reply(reply_msg)
+                # reply_msg = self.dirpath + "\r\n"
+                self.reply("250 Directory successfully changed to \"" + self.dirpath + "\"\r\n")
 
             elif msg[:3] == "CWD":
                 arg = msg[4:].strip()

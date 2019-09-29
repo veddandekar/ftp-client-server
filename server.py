@@ -11,12 +11,13 @@ class comm_sock:                                                            #os.
         client.send("220 (ChiaVedu 1.0)".encode('ascii'))
         if self.authenticate(client):
             client.send("230 login successful.\r\n".encode('ascii'))
+            client.send("Using binary mode to tranfer files.".encode('ascii'))
         else:
             client.send("login failed.\r\n".encode('ascii'))
         self.client = client
         self.ascii = False
         self.passive = True
-        self.dirpath = "/home"                                          #try for windows as well
+        self.dirpath = os.getenv("HOME")                                         #try for windows as well #getenv(home)
 
         client_thread = threading.Thread(target=self.cmd_process)
         client_thread.start()
@@ -26,7 +27,7 @@ class comm_sock:                                                            #os.
         msg = client.recv(4096).decode('ascii')
         if msg[:4] == "USER":
             user = msg[5:].strip()
-            client.send("331 Please specify the password".encode("ascii"))
+            client.send("331 Please specify the password.".encode("ascii"))
             msg = client.recv(4096).decode('ascii')
             if msg[:4] == "PASS":
                 password = msg[5:].strip()
@@ -72,11 +73,13 @@ class comm_sock:                                                            #os.
                 if self.data_client:                            #HANDLE ELSE
                     self.data_send(reply_msg)
                     self.data_client.close()
+                    self.reply("226 Directory send OK.\r\n")
+
                 else:
                     print("NO CONNECTION TO SEND ON")
 
             elif msg == "PWD\r\n":
-                reply_msg = self.dirpath + "\r\n"
+                reply_msg = "257 \"" + self.dirpath + "\" is the current directory.\r\n"
                 self.reply(reply_msg)
 
             elif msg == "CDUP\r\n":
@@ -94,7 +97,7 @@ class comm_sock:                                                            #os.
                 else:
                     os.chdir(os.path.join(self.dirpath, arg))        # Handle inexistent directories
                     self.dirpath = os.getcwd()
-                self.reply(self.dirpath + "\r\n")
+                self.reply("250 Directory successfully changed to \"" + self.dirpath + "\"\r\n")
 
             elif msg[:3] == "MKD":
                 arg = msg[4:].strip()
@@ -103,7 +106,7 @@ class comm_sock:                                                            #os.
 
                 else:
                     os.mkdir(os.path.join(self.dirpath, arg))        # Handle existent directories
-                self.reply("Directory created\r\n")
+                self.reply("257 \"" + os.path.join(self.dirpath, arg) + "\" created.\r\n")
 
             elif msg[:3] == "RMD":
                 arg = msg[4:].strip()
@@ -112,7 +115,7 @@ class comm_sock:                                                            #os.
 
                 else:
                     shutil.rmtree(os.path.join(self.dirpath, arg))     # Handle inexistent directories
-                self.reply("Directory Deleted\r\n")
+                self.reply("250 remove directory operation successful\r\n")
 
             elif msg[:4] == "DELE":
                 arg = msg[5:].strip()
@@ -121,26 +124,26 @@ class comm_sock:                                                            #os.
 
                 else:
                     os.remove(os.path.join(self.dirpath, arg))     # Handle inexistent directories
-                self.reply("File Deleted\r\n")
+                self.reply("250 Delete operation successful.\r\n")
             elif msg[:4] == "RNFR":
                 arg_from = msg[5:].strip()
 
                 if os.path.isfile(os.path.join(self.dirpath, arg_from)):         #handle else
-                    self.reply("350 RFNR Accepted\r\n")
+                    self.reply("350 Ready for RNTO.\r\n")
                 msg = self.client.recv(4096).decode('ascii')
 
                 if msg[:4] == "RNTO":
                     arg_to = msg[5:].strip()
                     os.rename(os.path.join(self.dirpath, arg_from), os.path.join(self.dirpath, arg_to))
-                    self.reply("File renamed\r\n")
+                    self.reply("250 rename successful.\r\n")
 
             elif msg[:4] == "TYPE":
                 if msg[5] == 'A':
                     self.ascii = True
-                    self.reply("200 Switching to ASCII mode")
+                    self.reply("200 Switching to ASCII mode.")
                 elif msg[5] == 'I':
                     self.ascii = False
-                    self.reply("200 Switching to Binary mode")
+                    self.reply("200 Switching to Binary mode.")
 
             elif msg[:4] == "RETR":
                 arg = msg[5:].strip()

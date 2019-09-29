@@ -131,14 +131,18 @@ class comm_sock:
                 if self.passive:                                    #handle for else active
                     if self.passive_conn() == "227":
                         data_rcvthread = threading.Thread(target=self.data_rcv)
-                        data_rcvthread.start()
                         self.ascii = True
                         self.rcvstatus = False
                         self.s.send("TYPE A\r\n".encode("ascii"))
                         while not self.rcvstatus:
                             pass
                         if self.msg[:3] == '200':
+                            self.rcvstatus = False
                             self.s.send("LIST\r\n".encode("ascii"))
+                            while not self.rcvstatus:
+                                pass
+                            if self.msg[:3] == '150':
+                                data_rcvthread.start()
                             data_rcvthread.join()
                 else:
                     if self.active_conn() == "200":

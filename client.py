@@ -194,7 +194,16 @@ class comm_sock:
                 self.s.send("CDUP\r\n".encode('ascii'))
 
             elif inpt[:2] == "cd":
-                self.s.send(("CWD " + inpt[3:] + "\r\n").encode('ascii'))
+                arg = inpt.split(" ")
+                if len(arg) == 1:
+                    dir = input("(remote-directory): ")
+                    if not dir:
+                        print("Invalid usage.")
+                        pass
+                else:
+                    dir = arg[1]
+                self.s.send(("CWD " + dir + "\r\n").encode('ascii'))
+
 
             elif inpt[:5] == "mkdir":
                 self.s.send(("MKD " + inpt[6:] + "\r\n").encode('ascii'))
@@ -269,7 +278,8 @@ class comm_sock:
                             data_thread.join()
                 print(str(os.path.getsize(os.getcwd() + "/" + arg)) + " bytes sent.")
 
-
+            else:
+                print("?Invalid command.")
             # else:
             #     inpt = inpt + '\r\n'
             #     self.rcvstatus = False
@@ -278,11 +288,17 @@ class comm_sock:
 
 if __name__ == "__main__":
     host = input("Enter IP: ")
-    port = int(input("Enter Port: "))
-
+    try:
+        port = int(input("Enter Port: "))
+    except:
+        port = 21
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print("Trying "+ host)
-    s.connect((host, port))                                     #Error handling
+    try:
+        s.connect((host, port))                                     #Error handling
+    except:
+        print("Connection Refused.")
+        sys.exit()
     print("Connected to " + host + ":" + str(port))
     comm_sock(s)
     s.close()

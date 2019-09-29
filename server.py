@@ -16,8 +16,7 @@ class comm_sock:                                                            #os.
         self.client = client
         self.ascii = False
         self.passive = True
-        self.dirpath = os.getenv("HOME")                                         #try for windows as well #getenv(home)
-
+        self.dirpath = os.getenv("HOME")                                         #try for windows as well
         client_thread = threading.Thread(target=self.cmd_process)
         client_thread.start()
 
@@ -36,11 +35,13 @@ class comm_sock:                                                            #os.
     def reply(self, msg):
         self.client.send(msg.encode('ascii'))
 
+
     def data_send(self, data):
         if not self.ascii:
             self.data_client.send(data)
         else:
             self.data_client.send(data.encode('ascii'))
+
 
     def data_receive(self, file):
         data = ""
@@ -60,6 +61,7 @@ class comm_sock:                                                            #os.
                 chunk = self.data_client.recv(4096).decode('ascii')
         f.close()
         self.data_client.close()
+
 
     def data_sock(self, datasocket):
         self.data_client, data_addr = datasocket.accept()
@@ -98,14 +100,22 @@ class comm_sock:                                                            #os.
 
             elif msg[:3] == "CWD":
                 arg = msg[4:].strip()
-                if arg[0] == "\\":
-                    os.chdir(arg)
-                    self.dirpath = os.getcwd()
+                if not arg:
+                    self.reply("550 Failed to change directory.")
+                elif arg[0] == "\\":
+                    try:
+                        os.chdir(arg)
+                        self.dirpath = os.getcwd()
+                        self.reply("250 Directory successfully changed to \"" + self.dirpath + "\"\r\n")
+                    except:
+                        self.reply("550 Failed to change directory.")
                 else:
-                    os.chdir(os.path.join(self.dirpath, arg))        # Handle inexistent directories
-                    self.dirpath = os.getcwd()
-                self.reply("250 Directory successfully changed to \"" + self.dirpath + "\"\r\n")
-
+                    try:
+                        os.chdir(os.path.join(self.dirpath, arg))
+                        self.dirpath = os.getcwd()
+                        self.reply("250 Directory successfully changed to \"" + self.dirpath + "\"\r\n")
+                    except:
+                        self.reply("550 Failed to change directory.")
             elif msg[:3] == "MKD":
                 arg = msg[4:].strip()
                 if arg[0] == "\\":

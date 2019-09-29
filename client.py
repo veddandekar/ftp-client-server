@@ -130,7 +130,14 @@ class comm_sock:
         while not self.end:
             inpt = input()
 
-            if inpt == "passive":
+            if inpt[0] == '!':
+                if inpt[1:3] == "cd":
+                    arg = inpt.split(" ")
+                    os.chdir(arg[1])
+                else:
+                    os.system(inpt[1:])
+
+            elif inpt == "passive":
                 self.passive = not self.passive
                 print("Passive: " + str(self.passive))
 

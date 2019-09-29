@@ -61,6 +61,7 @@ class comm_sock:
                     f.write(chunk)
                     chunk = self.data_server.recv(4096).decode('ascii')
                 f.close()
+            print(str(os.path.getsize(os.getcwd() + "/" + file)) + " bytes received.")
         self.data_server.close()
 
     def data_send(self, file):
@@ -77,6 +78,7 @@ class comm_sock:
                 self.data_server.send(chunk.encode('ascii'))
                 chunk = f.read(4096)
         f.close()
+        print(str(os.path.getsize(os.getcwd() + "/" + file)) + " bytes sent.")
         self.data_server.close()
 
 
@@ -129,7 +131,8 @@ class comm_sock:
     def cmd_process(self):
         while not self.end:
             inpt = input()
-
+            if not inpt:
+                continue
             if inpt[0] == '!':
                 if inpt[1:3] == "cd":
                     arg = inpt.split(" ")
@@ -141,8 +144,8 @@ class comm_sock:
                 self.passive = not self.passive
                 print("Passive: " + str(self.passive))
 
-            elif inpt == "ls" or inpt == "dir":
-                if self.passive:                                    #handle for else active
+            elif inpt == "ls" or inpt == "dir":                     #Does not always work :C
+                if self.passive:
                     if self.passive_conn() == "227":
                         data_rcvthread = threading.Thread(target=self.data_rcv)
                         self.ascii = True
@@ -155,9 +158,9 @@ class comm_sock:
                             self.s.send("LIST\r\n".encode("ascii"))
                             while not self.rcvstatus:
                                 pass
-                            if self.msg[:3] == '150':
+                            if self.msg[:3] == '150':               #problem here
                                 data_rcvthread.start()
-                            data_rcvthread.join()
+                                data_rcvthread.join()
                 else:
                     if self.active_conn() == "200":
                         self.rcvstatus = False
@@ -199,20 +202,48 @@ class comm_sock:
                     dir = input("(remote-directory): ")
                     if not dir:
                         print("Invalid usage.")
-                        pass
+                    else:
+                        self.s.send(("CWD " + dir + "\r\n").encode('ascii'))
                 else:
                     dir = arg[1]
-                self.s.send(("CWD " + dir + "\r\n").encode('ascii'))
+                    self.s.send(("CWD " + dir + "\r\n").encode('ascii'))
 
 
             elif inpt[:5] == "mkdir":
-                self.s.send(("MKD " + inpt[6:] + "\r\n").encode('ascii'))
+                arg = inpt.split(" ")
+                if len(arg) == 1:
+                    dir = input("(remote-directory): ")
+                    if not dir:
+                        print("Invalid usage.")
+                    else:
+                        self.s.send(("MKD " + dir + "\r\n").encode('ascii'))
+                else:
+                    dir = arg[1]
+                    self.s.send(("MKD " + dir + "\r\n").encode('ascii'))
 
             elif inpt[:5] == "rmdir":
-                self.s.send(("RMD " + inpt[6:] + "\r\n").encode('ascii'))
+                arg = inpt.split(" ")
+                if len(arg) == 1:
+                    dir = input("(remote-directory): ")
+                    if not dir:
+                        print("Invalid usage.")
+                    else:
+                        self.s.send(("RMD " + dir + "\r\n").encode('ascii'))
+                else:
+                    dir = arg[1]
+                    self.s.send(("RMD " + dir + "\r\n").encode('ascii'))
 
             elif inpt[:6] == "delete":
-                self.s.send(("DELE " + inpt[7:] + "\r\n").encode('ascii'))
+                arg = inpt.split(" ")
+                if len(arg) == 1:
+                    dir = input("(remote-file): ")
+                    if not dir:
+                        print("Invalid usage.")
+                    else:
+                        self.s.send(("DELE " + dir + "\r\n").encode('ascii'))
+                else:
+                    dir = arg[1]
+                    self.s.send(("DELE " + dir + "\r\n").encode('ascii'))
 
             elif inpt == "ascii":
                 self.s.send(("TYPE A\r\n").encode('ascii'))
@@ -252,31 +283,32 @@ class comm_sock:
                         if self.msg[:3] == '150':
                             data_thread.start()
                             data_thread.join()
-                print(str(os.path.getsize(os.getcwd() + "/" + fname)) + " bytes received.")
 
             elif inpt[:3] == "put":
                 arg = str(inpt[4:].strip())
-                if self.passive:
-                    if self.passive_conn() == "227":
-                        data_thread = threading.Thread(target=self.data_send, args=(arg, ))
-                        self.rcvstatus = False
-                        self.s.send(("STOR " + arg + "\r\n").encode("ascii"))
-                        while not self.rcvstatus:
-                            pass
-                        if self.msg[:3] == '150':
-                            data_thread.start()
-                            data_thread.join()
+                if not os.path.isfile(os.path.join(os.getcwd(), arg)):
+                    print("No such file or directory")
                 else:
-                    if self.active_conn() == "200":
-                        data_thread = threading.Thread(target=self.data_send, args=(arg, ))
-                        self.rcvstatus = False
-                        self.s.send(("STOR " + arg + "\r\n").encode("ascii"))
-                        while not self.rcvstatus:
-                            pass
-                        if self.msg[:3] == '150':
-                            data_thread.start()
-                            data_thread.join()
-                print(str(os.path.getsize(os.getcwd() + "/" + arg)) + " bytes sent.")
+                    if self.passive:
+                        if self.passive_conn() == "227":
+                            data_thread = threading.Thread(target=self.data_send, args=(arg, ))
+                            self.rcvstatus = False
+                            self.s.send(("STOR " + arg + "\r\n").encode("ascii"))
+                            while not self.rcvstatus:
+                                pass
+                            if self.msg[:3] == '150':
+                                data_thread.start()
+                                data_thread.join()
+                    else:
+                        if self.active_conn() == "200":
+                            data_thread = threading.Thread(target=self.data_send, args=(arg, ))
+                            self.rcvstatus = False
+                            self.s.send(("STOR " + arg + "\r\n").encode("ascii"))
+                            while not self.rcvstatus:
+                                pass
+                            if self.msg[:3] == '150':
+                                data_thread.start()
+                                data_thread.join()
 
             else:
                 print("?Invalid command.")

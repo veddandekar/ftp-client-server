@@ -119,40 +119,63 @@ class comm_sock:                                                            #os.
             elif msg[:3] == "MKD":
                 arg = msg[4:].strip()
                 if arg[0] == "\\":
-                    os.mkdir(arg)
+                    try:
+                        os.mkdir(arg)
+                        self.reply("257 \"" + os.path.join(self.dirpath, arg) + "\" created.\r\n")
+                    except:
+                        self.reply("550 Create directory operation failed.\r\n")
 
                 else:
-                    os.mkdir(os.path.join(self.dirpath, arg))        # Handle existent directories
-                self.reply("257 \"" + os.path.join(self.dirpath, arg) + "\" created.\r\n")
+                    try:
+                        os.mkdir(os.path.join(self.dirpath, arg))
+                        self.reply("257 \"" + os.path.join(self.dirpath, arg) + "\" created.\r\n")
+                    except:
+                        self.reply("550 Create directory operation failed.\r\n")
 
             elif msg[:3] == "RMD":
                 arg = msg[4:].strip()
                 if arg[0] == "\\":
-                    shutil.rmtree(arg)
-
+                    try:
+                        shutil.rmtree(arg)
+                        self.reply("250 Remove directory operation successful\r\n")
+                    except:
+                        self.reply("550 Remove directory operation failed.\r\n")
                 else:
-                    shutil.rmtree(os.path.join(self.dirpath, arg))     # Handle inexistent directories
-                self.reply("250 remove directory operation successful\r\n")
+                    try:
+                        shutil.rmtree(os.path.join(self.dirpath, arg))
+                        self.reply("250 remove directory operation successful\r\n")
+                    except:
+                        self.reply("550 Remove directory operation failed.\r\n")
 
             elif msg[:4] == "DELE":
                 arg = msg[5:].strip()
                 if arg[0] == "\\":
-                    os.remove(arg)
-
+                    try:
+                        os.remove(arg)
+                        self.reply("250 Delete operation successful.\r\n")
+                    except:
+                        self.reply("550 Delete operation failed.\r\n")
                 else:
-                    os.remove(os.path.join(self.dirpath, arg))     # Handle inexistent directories
-                self.reply("250 Delete operation successful.\r\n")
+                    try:
+                        os.remove(os.path.join(self.dirpath, arg))     # Handle inexistent directories
+                        self.reply("250 Delete operation successful.\r\n")
+                    except:
+                        self.reply("550 Delete operation failed.\r\n")
+
             elif msg[:4] == "RNFR":
                 arg_from = msg[5:].strip()
 
                 if os.path.isfile(os.path.join(self.dirpath, arg_from)):         #handle else
                     self.reply("350 Ready for RNTO.\r\n")
-                msg = self.client.recv(4096).decode('ascii')
 
-                if msg[:4] == "RNTO":
-                    arg_to = msg[5:].strip()
-                    os.rename(os.path.join(self.dirpath, arg_from), os.path.join(self.dirpath, arg_to))
-                    self.reply("250 rename successful.\r\n")
+                    msg = self.client.recv(4096).decode('ascii')
+
+                    if msg[:4] == "RNTO":
+                        arg_to = msg[5:].strip()
+                        os.rename(os.path.join(self.dirpath, arg_from), os.path.join(self.dirpath, arg_to))
+                        self.reply("250 rename successful.\r\n")
+                else:
+                    self.reply("550 RNFR command failed.\r\n")
 
             elif msg[:4] == "TYPE":
                 if msg[5] == 'A':
@@ -176,8 +199,9 @@ class comm_sock:                                                            #os.
                             break
                         self.data_send(chunk)
                     self.data_client.close()
-
-                self.reply("Transfer complete")
+                    self.reply("Transfer complete")
+                else:
+                    self.reply("550 Failed to open file.")
 
             elif msg == "PASV\r\n":
                 port = random.randint(1024, 65535)

@@ -10,8 +10,7 @@ class comm_sock:                                                            #os.
     def __init__(self, client):
         client.send("220 (ChiaVedu 1.0)".encode('ascii'))
         if self.authenticate(client):
-            client.send("230 login successful.\r\n".encode('ascii'))
-            client.send("Using binary mode to tranfer files.".encode('ascii'))
+            client.send("230 login successful.\nUsing binary mode to tranfer files.".encode('ascii'))
         else:
             client.send("login failed.\r\n".encode('ascii'))
         self.client = client
@@ -45,12 +44,20 @@ class comm_sock:                                                            #os.
 
     def data_receive(self, file):
         data = ""
-        chunk = self.data_client.recv(4096)
-        f = open(self.dirpath + "/" + file, "ba+")
-        while chunk:
-            # data = data + chunk
-            f.write(chunk)
+        if not self.ascii:
             chunk = self.data_client.recv(4096)
+            f = open(self.dirpath + "/" + file, "ba+")
+            while chunk:
+                # data = data + chunk
+                f.write(chunk)
+                chunk = self.data_client.recv(4096)
+        else:
+            chunk = self.data_client.recv(4096).decode('ascii')
+            f = open(self.dirpath + "/" + file, "a+")
+            while chunk:
+                # data = data + chunk
+                f.write(chunk)
+                chunk = self.data_client.recv(4096).decode('ascii')
         f.close()
         self.data_client.close()
 
@@ -148,13 +155,18 @@ class comm_sock:                                                            #os.
             elif msg[:4] == "RETR":
                 arg = msg[5:].strip()
                 if os.path.isfile(os.path.join(self.dirpath, arg)):
-                    f = open(self.dirpath + "/" + arg, "rb")                           #handle failed file
+                    if not self.ascii:
+                        f = open(self.dirpath + "/" + arg, "rb")                           #handle failed file
+                    else:
+                        f = open(self.dirpath + "/" + arg, "r")
+                    self.reply("150 Opening data connection for " + arg + "(" + str(os.path.getsize(os.path.join(self.dirpath, arg))) + ")\r\n")
                     while True:
                         chunk = f.read(4096)
                         if not chunk:
                             break
                         self.data_send(chunk)
                     self.data_client.close()
+
                 self.reply("Transfer complete")
 
             elif msg == "PASV\r\n":
@@ -174,7 +186,9 @@ class comm_sock:                                                            #os.
                 file = msg[5:].strip()
                 data_thread = threading.Thread(target=self.data_receive, args=(file,))          #DO WE REALLY NEED THESE THREADS?
                 data_thread.start()
+                self.reply("150 OK to send data.\r\n")
                 data_thread.join()
+                self.reply(("226 Transfer complete.\r\n"))      #check order of no of bytes sent and 226 code.
 
             elif msg[:4] == "PORT":
                 a1, a2, a3, a4, p1, p2 = msg[5:].split(",")

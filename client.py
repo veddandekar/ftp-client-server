@@ -64,11 +64,18 @@ class comm_sock:
         self.data_server.close()
 
     def data_send(self, file):
-        f = open(os.getcwd() + "/" + file, "rb")
-        chunk = f.read(4096)
-        while chunk:
-            self.data_server.send(chunk)
+        if not self.ascii:
+            f = open(os.getcwd() + "/" + file, "rb")
             chunk = f.read(4096)
+            while chunk:
+                self.data_server.send(chunk)
+                chunk = f.read(4096)
+        else:
+            f = open(os.getcwd() + "/" + file, "r")
+            chunk = f.read(4096)
+            while chunk:
+                self.data_server.send(chunk.encode('ascii'))
+                chunk = f.read(4096)
         f.close()
         self.data_server.close()
 
@@ -212,32 +219,48 @@ class comm_sock:
                 if self.passive:
                     if self.passive_conn() == "227":
                         data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
-                        data_thread.start()
+                        self.rcvstatus = False
                         self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
-                        data_thread.join()
+                        while not self.rcvstatus:
+                            pass
+                        if self.msg[:3] == '150':
+                            data_thread.start()
+                            data_thread.join()
                 else:
                     if self.active_conn() == "200":
-                        data_thread = threading.Thread(target=self.data_rcv, args=(arg, ))
-                        data_thread.start()
+                        data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
+                        self.rcvstatus = False
                         self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
-                        data_thread.join()
+                        while not self.rcvstatus:
+                            pass
+                        if self.msg[:3] == '150':
+                            data_thread.start()
+                            data_thread.join()
+                print(str(os.path.getsize(os.getcwd() + "/" + fname)) + " bytes received.")
 
             elif inpt[:3] == "put":
                 arg = str(inpt[4:].strip())
                 if self.passive:
                     if self.passive_conn() == "227":
                         data_thread = threading.Thread(target=self.data_send, args=(arg, ))
-                        data_thread.start()
+                        self.rcvstatus = False
                         self.s.send(("STOR " + arg + "\r\n").encode("ascii"))
-                        data_thread.join()
-                        print("FILE SENT SUCCESSFULLY")
+                        while not self.rcvstatus:
+                            pass
+                        if self.msg[:3] == '150':
+                            data_thread.start()
+                            data_thread.join()
                 else:
                     if self.active_conn() == "200":
                         data_thread = threading.Thread(target=self.data_send, args=(arg, ))
-                        data_thread.start()
+                        self.rcvstatus = False
                         self.s.send(("STOR " + arg + "\r\n").encode("ascii"))
-                        data_thread.join()
-                        print("FILE SENT SUCCESSFULLY")
+                        while not self.rcvstatus:
+                            pass
+                        if self.msg[:3] == '150':
+                            data_thread.start()
+                            data_thread.join()
+                print(str(os.path.getsize(os.getcwd() + "/" + arg)) + " bytes sent.")
 
 
             # else:

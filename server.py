@@ -7,12 +7,13 @@ import random
 import shutil
 
 class comm_sock:                                                            #os.path.isfile("/path/to/file") <-- use for error checking
-    def __init__(self, client):
+    def __init__(self, client, addr):
+        self.name = addr
         client.send("220 (ChiaVedu 1.0)".encode('ascii'))
         if self.authenticate(client):
-            client.send("230 login successful.\nUsing binary mode to tranfer files.".encode('ascii'))
+            client.send("230 login successful.\nUsing binary mode to tranfer files.\r\n".encode('ascii'))
         else:
-            client.send("login failed.\r\n".encode('ascii'))
+            client.send("530 Login incorrect.\r\n".encode('ascii'))
         self.client = client
         self.ascii = False
         self.passive = True
@@ -24,12 +25,18 @@ class comm_sock:                                                            #os.
 
     def authenticate(self, client):                                         #Fix formatting
         msg = client.recv(4096).decode('ascii')
+        if not msg:
+            print(self.name, " has lost connection.")
+            return False
         if msg[:4] == "USER":
             user = msg[5:].strip()
-            client.send("331 Please specify the password.".encode("ascii"))
+            client.send("331 Please specify the password.\r\n".encode("ascii"))
             msg = client.recv(4096).decode('ascii')
             if msg[:4] == "PASS":
                 password = msg[5:].strip()
+            else:
+                print(self.name, "has lost connection.")
+                return False
         return pam.pam().authenticate(user, password)
 
 
@@ -74,7 +81,7 @@ class comm_sock:                                                            #os.
             msg = self.client.recv(4096).decode('ascii')
             if not msg:
                 self.client.close()
-                print("A client has lost connection.")
+                print(self.name, " has lost connection.")
                 return
             print(msg)                                          # debugging
 
@@ -252,7 +259,7 @@ def listener():
     while not end:
         client, addr = serversocket.accept()
         print("Received connection from ", addr)
-        comm_sock(client)
+        comm_sock(client, addr)
     print("SERVER SOCKET CLOSED")
     serversocket.close()
 

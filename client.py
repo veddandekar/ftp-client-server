@@ -3,7 +3,7 @@ import threading
 import os
 import random
 import sys
-
+import readline
 
 class comm_sock:
     def __init__(self, server):
@@ -31,7 +31,7 @@ class comm_sock:
                 while not self.rcvstatus:
                     pass
                 if not self.msg[:3] == '230':
-                    print("invalid login")
+                    print("Login failed.")
                     self.end = True
                     return
         send_thread = threading.Thread(target=self.cmd_process)
@@ -150,7 +150,7 @@ class comm_sock:
                 self.passive = not self.passive
                 print("Passive: " + str(self.passive))
 
-            elif inpt == "ls" or inpt == "dir":                     #Does not always work :C
+            elif inpt == "ls" or inpt == "dir":
                 if self.passive:
                     if self.passive_conn() == "227":
                         data_rcvthread = threading.Thread(target=self.data_rcv)
@@ -256,11 +256,11 @@ class comm_sock:
                 self.s.send(("TYPE I\r\n").encode('ascii'))
                 self.ascii = False
 
-            elif inpt == "exit":                                      #handle bye and close
+            elif inpt == "exit" or inpt == "disconnect" or inpt == "quit":                                      #handle bye and close
                 self.s.send(("QUIT\r\n").encode('ascii'))
                 self.end = True
 
-            elif inpt[:3] == "get":                                 #handle third argument
+            elif inpt[:3] == "get":
                 arg = inpt.split(" ")
                 if len(arg) == 1:
                     arg = input("(remote-file): ")
@@ -343,6 +343,7 @@ class comm_sock:
 
 
 if __name__ == "__main__":
+    readline.parse_and_bind("tab: complete")
     host = input("Enter IP: ")
     try:
         port = int(input("Enter Port: "))
@@ -351,7 +352,7 @@ if __name__ == "__main__":
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print("Trying "+ host)
     try:
-        s.connect((host, port))                                     #Error handling
+        s.connect((host, port))
     except:
         print("Connection Refused.")
         sys.exit()

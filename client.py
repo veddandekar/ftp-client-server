@@ -4,9 +4,11 @@ import os
 import random
 import sys
 import readline
+import getpass
 
 class comm_sock:
-    def __init__(self, server):
+    def __init__(self, server, host):
+        self.name = host
         self.end = False
         self.rcvstatus = False
         self.s = server
@@ -19,13 +21,15 @@ class comm_sock:
         while not self.rcvstatus:
             pass
         if self.msg[:3] == '220':
-            name = input('Name: ')
+            name = input('Name(' + self.name + ':' + getpass.getuser() + '): ')
+            if not name:
+                name = getpass.getuser()
             self.rcvstatus = False
             self.s.send(("USER " + name + "\r\n").encode('ascii'))
             while not self.rcvstatus:
                 pass
             if self.msg[:3] == '331':
-                password = input('password: ')
+                password = getpass.getpass()
                 self.rcvstatus = False
                 self.s.send(("PASS " + password + "\r\n").encode('ascii'))
                 while not self.rcvstatus:
@@ -83,7 +87,6 @@ class comm_sock:
 
 
     def data_sock(self, datasocket):
-        print("entered")
         self.data_server, data_addr = datasocket.accept()
         print("Data connection established")
 
@@ -105,7 +108,6 @@ class comm_sock:
         a1, a2, a3, a4 = ip.split(".")
         datasocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         datasocket.bind(("localhost", port))
-        print(port)
         datasocket.listen(1)
         data_thread = threading.Thread(target=self.data_sock, args=(datasocket,))
         self.rcvstatus = False
@@ -139,6 +141,8 @@ class comm_sock:
             inpt = input()
             if not inpt:
                 continue
+            if self.end:
+                return
             if inpt[0] == '!':
                 if inpt[1:3] == "cd":
                     arg = inpt.split(" ")
@@ -165,7 +169,6 @@ class comm_sock:
                             data_rcvthread.join()
                 else:
                     if self.active_conn() == "200":
-                        print("TEST")
                         self.rcvstatus = False
                         self.ascii = True
                         self.s.send("TYPE A\r\n".encode("ascii"))
@@ -357,6 +360,6 @@ if __name__ == "__main__":
         print("Connection Refused.")
         sys.exit()
     print("Connected to " + host + ":" + str(port))
-    comm_sock(s)
+    comm_sock(s, host)
     s.close()
 

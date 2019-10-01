@@ -17,6 +17,7 @@ class comm_sock:
         self.ascii = False
         self.auth = False
         rcv_thread = threading.Thread(target=self.cmd_rcv)
+        rcv_thread.daemon = True
         rcv_thread.start()
         while not self.rcvstatus:
             pass
@@ -49,7 +50,7 @@ class comm_sock:
             while chunk:
                 data = data + chunk
                 chunk = self.data_server.recv(4096).decode('ascii')
-            print(data)
+            print(data, end='')
         else:
             if not self.ascii:
                 f = open(os.getcwd() + "/" + file, "ba+")
@@ -99,7 +100,7 @@ class comm_sock:
                 self.end = True
                 return
             self.rcvstatus = True
-            print(self.msg)
+            print(self.msg, end='')
 
 
     def active_conn(self):
@@ -362,4 +363,3 @@ if __name__ == "__main__":
     print("Connected to " + host + ":" + str(port))
     comm_sock(s, host)
     s.close()
-

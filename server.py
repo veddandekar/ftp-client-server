@@ -19,9 +19,7 @@ class comm_sock:                                                            #os.
         self.ascii = False
         self.passive = True
         self.dirpath = os.getenv("HOME")                                         #try for windows as well
-        client_thread = threading.Thread(target=self.cmd_process)
-        client_thread.start()
-        client_thread.join()
+        self.cmd_process()
         return
 
     def authenticate(self, client):                                         #Fix formatting
@@ -260,7 +258,10 @@ def listener():
     while not end:
         client, addr = serversocket.accept()
         print("Received connection from ", addr)
-        comm_sock(client, addr)
+        client_thread = threading.Thread(target=comm_sock, args=(client, addr))
+        client_thread.daemon = True
+        client_thread.start()
+        # comm_sock(client, addr)
     serversocket.close()
 
 

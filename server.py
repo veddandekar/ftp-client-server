@@ -2,7 +2,7 @@ import socket
 import threading
 import os
 import sys
-import pam
+# import pam
 import random
 import shutil
 import platform
@@ -11,7 +11,7 @@ import platform
 class comm_sock:
     def __init__(self, client, addr):
         self.name = addr
-        if platform.system != "Windows":
+        if platform.system() != "Windows":
             client.send("220 (ChiaVedu 1.0)\r\n".encode('ascii'))
             if self.authenticate(client):
                 client.send("230 login successful.\nUsing ASCII mode to tranfer files.\r\n".encode('ascii'))
@@ -19,12 +19,12 @@ class comm_sock:
                 client.send("530 Login incorrect.\r\n".encode('ascii'))
                 return
         else:
-            client.send("230 Authentication not supported on Windows\r\n".encode("ascii"))
-            client.send("220 (ChiaVedu 1.0)\r\n".encode('ascii'))
+            client.send("(ChiaVedu 1.0)\r\n".encode('ascii'))
+            client.send("Authentication not supported on Windows\r\n".encode("ascii"))
         self.client = client
         self.ascii = True
         self.passive = True
-        self.dirpath = os.getenv("HOME")                                         #try for windows as well
+        self.dirpath =  os.path.expanduser("~")                                         #try for windows as well
         self.cmd_process()
         return
 
@@ -218,7 +218,6 @@ class comm_sock:
 
             elif msg == "PASV\r\n":
                 port = random.randint(1024, 65535)
-                ip = socket.gethostbyname("localhost")
                 a1, a2, a3, a4 = ip.split(".")
                 # print(a1, p2, p3, p4, port)
                 datasocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

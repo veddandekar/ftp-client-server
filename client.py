@@ -6,6 +6,7 @@ import sys
 import readline
 import getpass
 
+
 class comm_sock:
     def __init__(self, server, host):
         self.name = host

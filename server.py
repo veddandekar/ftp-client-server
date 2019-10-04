@@ -5,16 +5,22 @@ import sys
 import pam
 import random
 import shutil
+import platform
 
-class comm_sock:                                                            #os.path.isfile("/path/to/file") <-- use for error checking
+
+class comm_sock:
     def __init__(self, client, addr):
         self.name = addr
-        client.send("220 (ChiaVedu 1.0)\r\n".encode('ascii'))
-        if self.authenticate(client):
-            client.send("230 login successful.\nUsing ASCII mode to tranfer files.\r\n".encode('ascii'))
+        if platform.system != "Windows":
+            client.send("220 (ChiaVedu 1.0)\r\n".encode('ascii'))
+            if self.authenticate(client):
+                client.send("230 login successful.\nUsing ASCII mode to tranfer files.\r\n".encode('ascii'))
+            else:
+                client.send("530 Login incorrect.\r\n".encode('ascii'))
+                return
         else:
-            client.send("530 Login incorrect.\r\n".encode('ascii'))
-            return
+            client.send("230 Authentication not supported on Windows\r\n".encode("ascii"))
+            client.send("220 (ChiaVedu 1.0)\r\n".encode('ascii'))
         self.client = client
         self.ascii = True
         self.passive = True
@@ -54,14 +60,14 @@ class comm_sock:                                                            #os.
         data = ""
         if not self.ascii:
             chunk = self.data_client.recv(4096)
-            f = open(self.dirpath + "/" + file, "ba+")
+            f = open(os.path.join(self.dirpath, file), "ba+")
             while chunk:
                 # data = data + chunk
                 f.write(chunk)
                 chunk = self.data_client.recv(4096)
         else:
             chunk = self.data_client.recv(4096).decode('ascii')
-            f = open(self.dirpath + "/" + file, "a+")
+            f = open(os.path.join(self.dirpath, file), "a+")
             while chunk:
                 # data = data + chunk
                 f.write(chunk)
@@ -196,9 +202,9 @@ class comm_sock:                                                            #os.
                 arg = msg[5:].strip()
                 if os.path.isfile(os.path.join(self.dirpath, arg)):
                     if not self.ascii:
-                        f = open(self.dirpath + "/" + arg, "rb")                           #handle failed file
+                        f = open(os.path.join(self.dirpath, arg), "rb")                           #handle failed file
                     else:
-                        f = open(self.dirpath + "/" + arg, "r")
+                        f = open(os.path.join(self.dirpath, arg), "r")
                     self.reply("150 Opening data connection for " + arg + "(" + str(os.path.getsize(os.path.join(self.dirpath, arg))) + ")\r\n")
                     while True:
                         chunk = f.read(4096)

@@ -11,12 +11,12 @@ class comm_sock:                                                            #os.
         self.name = addr
         client.send("220 (ChiaVedu 1.0)\r\n".encode('ascii'))
         if self.authenticate(client):
-            client.send("230 login successful.\nUsing binary mode to tranfer files.\r\n".encode('ascii'))
+            client.send("230 login successful.\nUsing ASCII mode to tranfer files.\r\n".encode('ascii'))
         else:
             client.send("530 Login incorrect.\r\n".encode('ascii'))
             return
         self.client = client
-        self.ascii = False
+        self.ascii = True
         self.passive = True
         self.dirpath = os.getenv("HOME")                                         #try for windows as well
         self.cmd_process()
@@ -76,6 +76,7 @@ class comm_sock:                                                            #os.
 
 
     def cmd_process(self):
+        global ip
         while True:
             msg = self.client.recv(4096).decode('ascii')
             if not msg:
@@ -215,7 +216,7 @@ class comm_sock:                                                            #os.
                 a1, a2, a3, a4 = ip.split(".")
                 # print(a1, p2, p3, p4, port)
                 datasocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                datasocket.bind(("localhost", port))
+                datasocket.bind((ip, port))
                 datasocket.listen(1)
                 data_thread = threading.Thread(target=self.data_sock, args=(datasocket,))
                 data_thread.start()
@@ -234,7 +235,7 @@ class comm_sock:                                                            #os.
                 a1, a2, a3, a4, p1, p2 = msg[5:].split(",")
                 self.data_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.data_client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                self.data_client.bind(("localhost", 1113))
+                self.data_client.bind((ip, 1113))
                 host = a1 + '.' + a2 + '.' + a3 + '.' + a4
                 port = int(p1) * 256 + int(p2)
                 self.data_client.connect((host, port))
@@ -242,17 +243,17 @@ class comm_sock:                                                            #os.
 
             elif msg == "QUIT\r\n":
                 self.reply("Goodbye.")
-                print("Client disconnected.")
+                print(self.name, " disconnected.")
                 self.client.close()
                 break
         return
 
 
 def listener():
-    global serversocket, end
+    global serversocket, end, ip
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    serversocket.bind(("localhost", 2222))
+    serversocket.bind((ip, 2222))
     serversocket.listen(5)
     print("Server started. Waiting for client.")
     while not end:
@@ -266,8 +267,9 @@ def listener():
 
 
 if __name__ == "__main__":
-    global end
+    global end, ip
     end = False
+    ip = input("Enter IP to bind to: ")
     listener_thread = threading.Thread(target=listener)
     listener_thread.daemon = True
     listener_thread.start()

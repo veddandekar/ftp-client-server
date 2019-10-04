@@ -14,7 +14,7 @@ class comm_sock:
         self.s = server
         self.msg = ""
         self.passive = True
-        self.ascii = False
+        self.ascii = True
         self.auth = False
         rcv_thread = threading.Thread(target=self.cmd_rcv)
         rcv_thread.daemon = True
@@ -44,9 +44,15 @@ class comm_sock:
         rcv_thread.join()
 
     def data_rcv(self, file=None):              #HOW TO HANDLE EOF? OS dependant? Not Really.
+        success = True
         data = ""
         if not file:
-            chunk = self.data_server.recv(4096).decode('ascii')
+            while success:
+                try:
+                    chunk = self.data_server.recv(4096).decode('ascii')
+                    success = False
+                except:
+                    continue
             while chunk:
                 data = data + chunk
                 chunk = self.data_server.recv(4096).decode('ascii')
@@ -54,14 +60,24 @@ class comm_sock:
         else:
             if not self.ascii:
                 f = open(os.getcwd() + "/" + file, "ba+")
-                chunk = self.data_server.recv(4096)
+                while success:
+                    try:
+                        chunk = self.data_server.recv(4096)
+                        success = False
+                    except:
+                        continue
                 while chunk:
                     f.write(chunk)
                     chunk = self.data_server.recv(4096)
                 f.close()
             else:
                 f = open(os.getcwd() + "/" + file, "a+")
-                chunk = self.data_server.recv(4096).decode('ascii')
+                while success:
+                    try:
+                        chunk = self.data_server.recv(4096).decode('ascii')
+                        success = False
+                    except:
+                        continue
                 while chunk:
                     f.write(chunk)
                     chunk = self.data_server.recv(4096).decode('ascii')
@@ -104,17 +120,19 @@ class comm_sock:
 
 
     def active_conn(self):
+        global ip
         port = random.randint(1024, 65535)
-        ip = socket.gethostbyname("localhost")
+        # ip = socket.gethostbyname("localhost")
         a1, a2, a3, a4 = ip.split(".")
         datasocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        datasocket.bind(("localhost", port))
+        datasocket.bind((ip, port))
         datasocket.listen(1)
         data_thread = threading.Thread(target=self.data_sock, args=(datasocket,))
         self.rcvstatus = False
         data_thread.start()
+        print("PORT " + a1 + "," + a2 + "," + a3 + "," + a4 + "," + str(int(port/256)) + "," + str(int(port%256)) + "\r\n")
         self.s.send(("PORT " + a1 + "," + a2 + "," + a3 + "," + a4 + "," + str(int(port/256)) + "," + str(int(port%256)) + "\r\n").encode('ascii'))
-        data_thread.join()
+        # data_thread.join()
         while not self.rcvstatus:
             pass
         return self.msg[:3]
@@ -176,8 +194,12 @@ class comm_sock:
                         while not self.rcvstatus:
                             pass
                         if self.msg[:3] == '200':
+                            self.rcvstatus = False
                             self.s.send("LIST\r\n".encode("ascii"))
-                            self.data_rcv()
+                            while not self.rcvstatus:
+                                pass
+                            if self.msg[:3] == "150":
+                                self.data_rcv()
 
             elif inpt[:6] == "rename":
                 arg = inpt.split(" ")
@@ -347,8 +369,9 @@ class comm_sock:
 
 
 if __name__ == "__main__":
-    readline.parse_and_bind("tab: complete")
+    global ip
     host = input("Enter IP: ")
+    ip = input("Enter IP to bind to :")
     try:
         port = int(input("Enter Port: "))
     except:

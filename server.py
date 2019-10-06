@@ -24,11 +24,11 @@ class comm_sock:
         self.client = client
         self.ascii = True
         self.passive = True
-        self.dirpath =  os.path.expanduser("~")                                         #try for windows as well
+        self.dirpath =  os.path.expanduser("~")
         self.cmd_process()
         return
 
-    def authenticate(self, client):                                         #Fix formatting
+    def authenticate(self, client):
         msg = client.recv(4096).decode('ascii')
         if not msg:
             print(self.name, " has lost connection.")
@@ -62,14 +62,12 @@ class comm_sock:
             chunk = self.data_client.recv(4096)
             f = open(os.path.join(self.dirpath, file), "wb")
             while chunk:
-                # data = data + chunk
                 f.write(chunk)
                 chunk = self.data_client.recv(4096)
         else:
             chunk = self.data_client.recv(4096).decode('ascii')
             f = open(os.path.join(self.dirpath, file), "w")
             while chunk:
-                # data = data + chunk
                 f.write(chunk)
                 chunk = self.data_client.recv(4096).decode('ascii')
         f.close()
@@ -78,7 +76,6 @@ class comm_sock:
 
     def data_sock(self, datasocket):
         self.data_client, data_addr = datasocket.accept()
-        # print("Data connection established.")
 
 
     def cmd_process(self):
@@ -89,9 +86,8 @@ class comm_sock:
                 self.client.close()
                 print(self.name, " has lost connection.")
                 return
-            # print(msg)                                          # debugging
 
-            if msg == "LIST\r\n":                               # Directory and file colours
+            if msg == "LIST\r\n":
                 self.reply("150 Here comes the directory listing.")
                 reply_msg = ""
                 for x in os.listdir(self.dirpath):
@@ -108,7 +104,6 @@ class comm_sock:
                 os.chdir(self.dirpath)
                 os.chdir(os.path.abspath('..'))
                 self.dirpath = os.getcwd()
-                # reply_msg = self.dirpath + "\r\n"
                 self.reply("250 Directory successfully changed to \"" + self.dirpath + "\"")
 
             elif msg[:3] == "CWD":
@@ -170,7 +165,7 @@ class comm_sock:
                         self.reply("550 Delete operation failed.")
                 else:
                     try:
-                        os.remove(os.path.join(self.dirpath, arg))     # Handle inexistent directories
+                        os.remove(os.path.join(self.dirpath, arg))
                         self.reply("250 Delete operation successful.")
                     except:
                         self.reply("550 Delete operation failed.")
@@ -178,7 +173,7 @@ class comm_sock:
             elif msg[:4] == "RNFR":
                 arg_from = msg[5:].strip()
 
-                if os.path.isfile(os.path.join(self.dirpath, arg_from)):         #handle else
+                if os.path.isfile(os.path.join(self.dirpath, arg_from)):
                     self.reply("350 Ready for RNTO.")
 
                     msg = self.client.recv(4096).decode('ascii')
@@ -202,10 +197,10 @@ class comm_sock:
                 arg = msg[5:].strip()
                 if os.path.isfile(os.path.join(self.dirpath, arg)):
                     if not self.ascii:
-                        f = open(os.path.join(self.dirpath, arg), "rb")                           #handle failed file
+                        f = open(os.path.join(self.dirpath, arg), "rb")
                     else:
                         f = open(os.path.join(self.dirpath, arg), "r")
-                    self.reply("150 Opening data connection for " + arg + "(" + str(os.path.getsize(os.path.join(self.dirpath, arg))) + ")\r\n")
+                    self.reply("150 Opening data connection for " + arg + "(" + str(os.path.getsize(os.path.join(self.dirpath, arg))) + ")")
                     while True:
                         chunk = f.read(4096)
                         if not chunk:
@@ -230,11 +225,11 @@ class comm_sock:
 
             elif msg[:4] == "STOR":
                 file = msg[5:].strip()
-                data_thread = threading.Thread(target=self.data_receive, args=(file,))          #DO WE REALLY NEED THESE THREADS?
+                data_thread = threading.Thread(target=self.data_receive, args=(file,))
                 data_thread.start()
                 self.reply("150 OK to send data.")
                 data_thread.join()
-                self.reply(("226 Transfer complete."))      #check order of no of bytes sent and 226 code.
+                self.reply(("226 Transfer complete."))
 
             elif msg[:4] == "PORT":
                 a1, a2, a3, a4, p1, p2 = msg[5:].split(",")
@@ -268,7 +263,6 @@ def listener():
         client_thread = threading.Thread(target=comm_sock, args=(client, addr))
         client_thread.daemon = True
         client_thread.start()
-        # comm_sock(client, addr)
     serversocket.close()
 
 

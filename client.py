@@ -312,7 +312,6 @@ class comm_sock:
                         if self.msg[:3] == '150':
                             data_thread.join()
                 self.server_rcv()
-                self.server_rcv()
 
             elif inpt[:4] == "mget":
                 arg = inpt.split(" ")
@@ -340,7 +339,6 @@ class comm_sock:
                             data_thread.start()
                             if self.msg[:3] == '150':
                                 data_thread.join()
-                    self.server_rcv()
                     self.server_rcv()
 
             elif inpt[:3] == "put":

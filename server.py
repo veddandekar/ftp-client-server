@@ -2,7 +2,7 @@ import socket
 import threading
 import os
 import sys
-# import pam
+import pam
 import random
 import shutil
 import platform
@@ -60,14 +60,14 @@ class comm_sock:
         data = ""
         if not self.ascii:
             chunk = self.data_client.recv(4096)
-            f = open(os.path.join(self.dirpath, file), "ba+")
+            f = open(os.path.join(self.dirpath, file), "wb")
             while chunk:
                 # data = data + chunk
                 f.write(chunk)
                 chunk = self.data_client.recv(4096)
         else:
             chunk = self.data_client.recv(4096).decode('ascii')
-            f = open(os.path.join(self.dirpath, file), "a+")
+            f = open(os.path.join(self.dirpath, file), "w")
             while chunk:
                 # data = data + chunk
                 f.write(chunk)
@@ -245,7 +245,8 @@ class comm_sock:
                 port = int(p1) * 256 + int(p2)
                 self.data_client.connect((host, port))
                 self.reply("200 PORT command succesful. Consider using passive mode")
-
+            elif msg[:4] == "SYST":
+                self.reply("215 The server is running on " + platform.system())
             elif msg == "QUIT\r\n":
                 self.reply("Goodbye.")
                 print(self.name, " disconnected.")

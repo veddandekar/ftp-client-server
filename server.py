@@ -200,6 +200,14 @@ class comm_sock:
                         f = open(os.path.join(self.dirpath, arg), "rb")
                     else:
                         f = open(os.path.join(self.dirpath, arg), "r")
+                    try:
+                        testChunk = f.read(4096)
+                    except:
+                        self.data_client.close()
+                        self.reply("550 Failed to open file.")
+                        self.reply("550 Try Binary mode.")
+                        continue
+                    f.seek(0, 0)
                     self.reply("150 Opening data connection for " + arg + "(" + str(os.path.getsize(os.path.join(self.dirpath, arg))) + ")")
                     while True:
                         chunk = f.read(4096)
@@ -207,9 +215,10 @@ class comm_sock:
                             break
                         self.data_send(chunk)
                     self.data_client.close()
-                    self.reply("Transfer complete")
+                    self.reply("226 Transfer complete")
                 else:
                     self.reply("550 Failed to open file.")
+                    self.reply("550 Try Binary mode.")
 
             elif msg == "PASV\r\n":
                 port = random.randint(1024, 65535)
@@ -235,13 +244,13 @@ class comm_sock:
                 a1, a2, a3, a4, p1, p2 = msg[5:].split(",")
                 self.data_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.data_client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                self.data_client.bind((ip, 1113))
+                self.data_client.bind((ip, 20))
                 host = a1 + '.' + a2 + '.' + a3 + '.' + a4
                 port = int(p1) * 256 + int(p2)
                 self.data_client.connect((host, port))
                 self.reply("200 PORT command succesful. Consider using passive mode")
-            elif msg[:4] == "SYST":
-                self.reply("215 The server is running on " + platform.system())
+            # elif msg[:4] == "SYST":
+            #     self.reply("215 The server is running on " + platform.system())
             elif msg == "QUIT\r\n":
                 self.reply("Goodbye.")
                 print(self.name, " disconnected.")

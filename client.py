@@ -95,6 +95,14 @@ class comm_sock:
                 chunk = f.read(4096)
         else:
             f = open(os.getcwd() + "/" + file, "r")
+            try:
+                testChunk = f.read(4096)
+            except:
+                print("Error reading file, try sending in binary mode.")
+                f.close()
+                self.data_server.close()
+                return
+            f.seek(0, 0)
             chunk = f.read(4096)
             while chunk:
                 self.data_server.send(chunk.encode('ascii'))
@@ -114,6 +122,7 @@ class comm_sock:
         port = random.randint(1024, 65535)
         a1, a2, a3, a4 = ip.split(".")
         datasocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        datasocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         datasocket.bind((ip, port))
         datasocket.listen(1)
         data_thread = threading.Thread(target=self.data_sock, args=(datasocket,))
@@ -165,8 +174,9 @@ class comm_sock:
                         if self.msg[:3] == '200':
                             self.s.send("LIST\r\n".encode("ascii"))
                             self.server_rcv()
-                            self.data_rcv()
-                            self.server_rcv()
+                            if self.msg[:3] == "150":
+                                self.data_rcv()
+                                self.server_rcv()
                 else:
                     if self.active_conn() == "200":
                         self.ascii = True
@@ -276,9 +286,9 @@ class comm_sock:
                 self.server_rcv()
                 self.end = True
 
-            elif inpt == "system":
-                self.s.send("SYST\r\n".encode('ascii'))
-                self.server_rcv()
+            # elif inpt == "system":
+            #     self.s.send("SYST\r\n".encode('ascii'))
+            #     self.server_rcv()
 
             elif inpt[:3] == "get":
                 arg = inpt.split(" ")

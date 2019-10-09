@@ -224,7 +224,6 @@ class comm_sock:
             elif msg == "PASV\r\n":
                 port = random.randint(1024, 65535)
                 a1, a2, a3, a4 = ip.split(".")
-                # print(a1, p2, p3, p4, port)
                 datasocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 datasocket.bind((ip, port))
                 datasocket.listen(1)
@@ -250,8 +249,7 @@ class comm_sock:
                 port = int(p1) * 256 + int(p2)
                 self.data_client.connect((host, port))
                 self.reply("200 PORT command succesful. Consider using passive mode")
-            # elif msg[:4] == "SYST":
-            #     self.reply("215 The server is running on " + platform.system())
+
             elif msg == "QUIT\r\n":
                 self.reply("Goodbye.")
                 print(self.name, " disconnected.")
@@ -277,8 +275,6 @@ def listener(ip, port):
 
 
 if __name__ == "__main__":
-    # global end
-    # end = False
     if len(sys.argv) == 2:
         ip = sys.argv[1]
         port = 21
@@ -288,12 +284,12 @@ if __name__ == "__main__":
     else:
         ip = input("Enter IP: ")
         port = int(input("Enter port: "))
+    ip = socket.gethostbyname(ip)
     listener_thread = threading.Thread(target=listener, args=(ip, port))
     listener_thread.daemon = True
     listener_thread.start()
     inpt = ""
     while inpt != "quit" and inpt != "exit" and inpt != "bye":
         inpt = input()
-    # end = True
     print("Server shutdown!")
     sys.exit()

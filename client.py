@@ -45,7 +45,7 @@ class comm_sock:
         print(self.msg)
         self.s.recv(1).decode('ascii')
 
-    def data_rcv(self, file=None):              #HOW TO HANDLE EOF? OS dependant? Not Really.
+    def data_rcv(self, file=None):
         success = True
         data = ""
         if not file:
@@ -61,25 +61,25 @@ class comm_sock:
             print(data, end='')
         else:
             if not self.ascii:
-                f = open(os.getcwd() + "/" + file, "wb")
                 while success:
                     try:
                         chunk = self.data_server.recv(4096)
                         success = False
                     except:
                         continue
+                f = open(os.getcwd() + "/" + file, "wb")
                 while chunk:
                     f.write(chunk)
                     chunk = self.data_server.recv(4096)
                 f.close()
             else:
-                f = open(os.getcwd() + "/" + file, "w")
                 while success:
                     try:
                         chunk = self.data_server.recv(4096).decode('ascii')
                         success = False
                     except:
                         continue
+                f = open(os.getcwd() + "/" + file, "w")
                 while chunk:
                     f.write(chunk)
                     chunk = self.data_server.recv(4096).decode('ascii')
@@ -146,7 +146,7 @@ class comm_sock:
             port = int(p1) * 256 + int(p2)
             self.data_server.connect((host, port))
             return "227"
-        return "1010"           #CHANGE TO CODE FOR FAILURE
+        return "425"
 
 
     def cmd_process(self):
@@ -431,12 +431,14 @@ if __name__ == "__main__":
     global ip
     if len(sys.argv) == 2:
         host = sys.argv[1]
-        ip = "127.0.0.1"
+        ip = socket.gethostname()
+        ip = socket.gethostbyname(ip)
         port = 21
     elif len(sys.argv) == 3:
         host = sys.argv[1]
         port = int(sys.argv[2])
-        ip = "127.0.0.1"
+        ip = socket.gethostname()
+        ip = socket.gethostbyname(ip)
     else:
         host = input("Enter IP: ")
         ip = input("Enter IP to bind to: ")
@@ -444,6 +446,7 @@ if __name__ == "__main__":
             port = int(input("Enter Port: "))
         except:
             port = 21
+    host = socket.gethostbyname(host)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print("Trying "+ host)
     try:

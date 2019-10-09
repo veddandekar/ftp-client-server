@@ -52,12 +52,15 @@ class comm_sock:
             while success:
                 try:
                     chunk = self.data_server.recv(4096).decode('ascii')
+                    chunk = chunk.replace("\r\n", "\n")
                     success = False
                 except:
                     continue
             while chunk:
                 data = data + chunk
                 chunk = self.data_server.recv(4096).decode('ascii')
+                chunk = chunk.replace("\r\n", "\n")
+
             print(data, end='')
         else:
             if not self.ascii:
@@ -76,6 +79,7 @@ class comm_sock:
                 while success:
                     try:
                         chunk = self.data_server.recv(4096).decode('ascii')
+                        chunk = chunk.replace("\r\n", "\n")
                         success = False
                     except:
                         continue
@@ -83,6 +87,7 @@ class comm_sock:
                 while chunk:
                     f.write(chunk)
                     chunk = self.data_server.recv(4096).decode('ascii')
+                    chunk = chunk.replace("\r\n", "\n")
                 f.close()
             print(str(os.path.getsize(os.getcwd() + "/" + file)) + " bytes received.")
         self.data_server.close()
@@ -105,9 +110,12 @@ class comm_sock:
                 return
             f.seek(0, 0)
             chunk = f.read(4096)
+            chunk = chunk.replace("\n", "\r\n")
             while chunk:
                 self.data_server.send(chunk.encode('ascii'))
                 chunk = f.read(4096)
+                chunk = chunk.replace("\n", "\r\n")
+
         f.close()
         print(str(os.path.getsize(os.getcwd() + "/" + file)) + " bytes sent.")
         self.data_server.close()

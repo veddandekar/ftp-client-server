@@ -54,6 +54,7 @@ class comm_sock:
         if not self.ascii:
             self.data_client.send(data)
         else:
+            data = data.replace("\n", "\r\n")
             self.data_client.send(data.encode('ascii'))
 
 
@@ -67,10 +68,14 @@ class comm_sock:
                 chunk = self.data_client.recv(4096)
         else:
             chunk = self.data_client.recv(4096).decode('ascii')
+            chunk = chunk.replace("\r\n", "\n")
+
             f = open(os.path.join(self.dirpath, file), "w")
             while chunk:
                 f.write(chunk)
                 chunk = self.data_client.recv(4096).decode('ascii')
+                chunk = chunk.replace("\r\n", "\n")
+
         f.close()
         self.data_client.close()
 

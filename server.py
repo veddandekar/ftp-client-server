@@ -1,3 +1,4 @@
+#! /usr/bin/python3
 import socket
 import threading
 import os
@@ -24,7 +25,7 @@ class comm_sock:
         self.client = client
         self.ascii = True
         self.passive = True
-        self.dirpath =  os.path.expanduser("~")
+        self.dirpath = os.path.expanduser("~")
         self.cmd_process()
         return
 
@@ -259,14 +260,14 @@ class comm_sock:
         return
 
 
-def listener():
-    global serversocket, end, ip
+def listener(ip, port):
+    global serversocket, end
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    serversocket.bind((ip, 2222))
+    serversocket.bind((ip, port))
     serversocket.listen(5)
     print("Server started. Waiting for client.")
-    while not end:
+    while True:
         client, addr = serversocket.accept()
         print("Received connection from ", addr)
         client_thread = threading.Thread(target=comm_sock, args=(client, addr))
@@ -276,15 +277,23 @@ def listener():
 
 
 if __name__ == "__main__":
-    global end, ip
-    end = False
-    ip = input("Enter IP to bind to: ")
-    listener_thread = threading.Thread(target=listener)
+    # global end
+    # end = False
+    if len(sys.argv) == 2:
+        ip = sys.argv[1]
+        port = 21
+    elif len(sys.argv) == 3:
+        ip = sys.argv[1]
+        port = int(sys.argv[2])
+    else:
+        ip = input("Enter IP: ")
+        port = int(input("Enter port: "))
+    listener_thread = threading.Thread(target=listener, args=(ip, port))
     listener_thread.daemon = True
     listener_thread.start()
     inpt = ""
     while inpt != "quit" and inpt != "exit" and inpt != "bye":
         inpt = input()
-    end = True
+    # end = True
     print("Server shutdown!")
     sys.exit()

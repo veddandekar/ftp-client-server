@@ -1,3 +1,4 @@
+#! /usr/bin/python3
 import socket
 import threading
 import os
@@ -150,7 +151,7 @@ class comm_sock:
 
     def cmd_process(self):
         while not self.end:
-            inpt = input()
+            inpt = input("ftp> ")
             if not inpt:
                 continue
             if self.end:
@@ -432,6 +433,10 @@ if __name__ == "__main__":
         host = sys.argv[1]
         ip = "127.0.0.1"
         port = 21
+    elif len(sys.argv) == 3:
+        host = sys.argv[1]
+        port = int(sys.argv[2])
+        ip = "127.0.0.1"
     else:
         host = input("Enter IP: ")
         ip = input("Enter IP to bind to: ")

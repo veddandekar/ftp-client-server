@@ -126,6 +126,7 @@ class comm_sock:
         datasocket.bind((ip, port))
         datasocket.listen(1)
         data_thread = threading.Thread(target=self.data_sock, args=(datasocket,))
+        data_thread.daemon = True
         data_thread.start()
         self.s.send(("PORT " + a1 + "," + a2 + "," + a3 + "," + a4 + "," + str(int(port/256)) + "," + str(int(port%256)) + "\r\n").encode('ascii'))
         self.server_rcv()
@@ -316,6 +317,7 @@ class comm_sock:
                 else:
                     if self.active_conn() == "200":
                         data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
+                        data_thread.daemon = True
                         self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
                         self.server_rcv()
                         data_thread.start()
@@ -344,6 +346,7 @@ class comm_sock:
                     else:
                         if self.active_conn() == "200":
                             data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
+                            data_thread.daemon = True
                             self.s.send(("RETR " + fname + "\r\n").encode("ascii"))
                             self.server_rcv()
                             data_thread.start()
@@ -379,6 +382,7 @@ class comm_sock:
                     else:
                         if self.active_conn() == "200":
                             data_thread = threading.Thread(target=self.data_send, args=(arg, ))
+                            data_thread.daemon = True
                             self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
                             self.server_rcv()
                             data_thread.start()
@@ -410,6 +414,7 @@ class comm_sock:
                         else:
                             if self.active_conn() == "200":
                                 data_thread = threading.Thread(target=self.data_send, args=(fname, ))
+                                data_thread.daemon = True
                                 self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
                                 self.server_rcv()
                                 data_thread.start()
@@ -423,12 +428,17 @@ class comm_sock:
 
 if __name__ == "__main__":
     global ip
-    host = input("Enter IP: ")
-    ip = input("Enter IP to bind to :")
-    try:
-        port = int(input("Enter Port: "))
-    except:
+    if len(sys.argv) == 2:
+        host = sys.argv[1]
+        ip = "127.0.0.1"
         port = 21
+    else:
+        host = input("Enter IP: ")
+        ip = input("Enter IP to bind to: ")
+        try:
+            port = int(input("Enter Port: "))
+        except:
+            port = 21
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print("Trying "+ host)
     try:

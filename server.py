@@ -7,7 +7,7 @@ import pam
 import random
 import shutil
 import platform
-
+import glob
 
 class comm_sock:
     def __init__(self, client, addr):
@@ -199,6 +199,15 @@ class comm_sock:
                     self.ascii = False
                     self.reply("200 Switching to Binary mode.")
 
+            elif msg[:4] == "NLST":
+                self.reply("150 Here comes the directory listing.")
+                rmsg = ""
+                for each in glob.glob(msg[5:].strip()):
+                    rmsg = rmsg + each + "\r\n"
+                rmsg = rmsg[:-2]
+                self.data_send(rmsg)
+                self.data_client.close()
+
             elif msg[:4] == "RETR":
                 arg = msg[5:].strip()
                 if os.path.isfile(os.path.join(self.dirpath, arg)):
@@ -249,7 +258,7 @@ class comm_sock:
                 a1, a2, a3, a4, p1, p2 = msg[5:].split(",")
                 self.data_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.data_client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                self.data_client.bind((ip, 20))
+                self.data_client.bind((ip, 1212))
                 host = a1 + '.' + a2 + '.' + a3 + '.' + a4
                 port = int(p1) * 256 + int(p2)
                 self.data_client.connect((host, port))

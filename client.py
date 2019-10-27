@@ -5,6 +5,7 @@ import os
 import random
 import sys
 import getpass
+import glob
 
 
 class comm_sock:
@@ -45,7 +46,7 @@ class comm_sock:
         print(self.msg)
         self.s.recv(1).decode('ascii')
 
-    def data_rcv(self, file=None):
+    def data_rcv(self, file=None, NLST=False):
         success = True
         data = ""
         if not file:
@@ -60,8 +61,10 @@ class comm_sock:
                 data = data + chunk
                 chunk = self.data_server.recv(4096).decode('ascii')
                 chunk = chunk.replace("\r\n", "\n")
-
-            print(data, end='')
+            if not NLST:
+                print(data, end='')
+            else:
+                self.nlst_data = data
         else:
             if not self.ascii:
                 while success:
@@ -335,6 +338,7 @@ class comm_sock:
                 self.server_rcv()
 
             elif inpt[:4] == "mget":
+                mode = self.ascii
                 arg = inpt.split(" ")
                 if len(arg) == 1:
                     arg = input("(remote-files): ").split(" ")
@@ -346,22 +350,53 @@ class comm_sock:
                 for fname in arg:
                     if self.passive:
                         if self.passive_conn() == "227":
-                            data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
-                            self.s.send(("RETR " + fname + "\r\n").encode("ascii"))
+                            if not self.ascii:
+                                self.ascii = True
+                                self.s.send("TYPE A\r\n".encode("ascii"))
+                                self.server_rcv()
+                            self.s.send(("NLST " + fname + "\r\n").encode("ascii"))
                             self.server_rcv()
-                            data_thread.start()
-                            if self.msg[:3] == '150':
-                                data_thread.join()
+                            self.data_rcv(None, True)
+                            l = self.nlst_data.split("\n")
+                            if not mode:
+                                self.ascii = False
+                                self.s.send("TYPE I\r\n".encode("ascii"))
+                                self.server_rcv()
+                            for item in l:
+                                if(input("mget " + item + "?") == 'y'):
+                                    data_thread = threading.Thread(target=self.data_rcv, args=(item, ))
+                                    self.passive_conn()
+                                    self.s.send(("RETR " + item + "\r\n").encode("ascii"))
+                                    self.server_rcv()
+                                    data_thread.start()
+                                    if self.msg[:3] == '150':
+                                        data_thread.join()
+                                        self.server_rcv()
                     else:
                         if self.active_conn() == "200":
-                            data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
-                            data_thread.daemon = True
-                            self.s.send(("RETR " + fname + "\r\n").encode("ascii"))
+                            if not self.ascii:
+                                self.ascii = True
+                                self.s.send("TYPE A\r\n".encode("ascii"))
+                                self.server_rcv()
+                            self.s.send(("NLST " + fname + "\r\n").encode("ascii"))
                             self.server_rcv()
-                            data_thread.start()
-                            if self.msg[:3] == '150':
-                                data_thread.join()
-                    self.server_rcv()
+                            self.data_rcv(None, True)
+                            l = self.nlst_data.split("\r\n")
+                            if not mode:
+                                self.ascii = False
+                                self.s.send("TYPE I\r\n".encode("ascii"))
+                                self.server_rcv()
+                            for item in l:
+                                if(input("mget " + item + "?") == 'y'):
+                                    data_thread = threading.Thread(target=self.data_rcv, args=(item, ))
+                                    data_thread.daemon = True
+                                    self.active_conn()
+                                    self.s.send(("RETR " + item + "\r\n").encode("ascii"))
+                                    self.server_rcv()
+                                    data_thread.start()
+                                    if self.msg[:3] == '150':
+                                        data_thread.join()
+                                        self.server_rcv()
 
             elif inpt[:3] == "put":
                 arg = inpt.split(" ")
@@ -408,28 +443,32 @@ class comm_sock:
                         continue
                 else:
                     arg = inpt[5:].split(" ")
-                for fname in arg:
-                    if not os.path.isfile(os.path.join(os.getcwd(), fname)):
-                        print("No such file or directory")
-                    else:
-                        if self.passive:
-                            if self.passive_conn() == "227":
-                                data_thread = threading.Thread(target=self.data_send, args=(fname, ))
-                                self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
-                                self.server_rcv()
-                                data_thread.start()
-                                if self.msg[:3] == '150':
-                                    data_thread.join()
+
+                for each in arg:
+                    flist = glob.glob(each)                     #Check
+                    for fname in flist:
+                        if not os.path.isfile(os.path.join(os.getcwd(), fname)):
+                            print("No such file or directory")
                         else:
-                            if self.active_conn() == "200":
-                                data_thread = threading.Thread(target=self.data_send, args=(fname, ))
-                                data_thread.daemon = True
-                                self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
+                            if input("mput " + fname + "?") == "y":
+                                if self.passive:
+                                    if self.passive_conn() == "227":
+                                        data_thread = threading.Thread(target=self.data_send, args=(fname, ))
+                                        self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
+                                        self.server_rcv()
+                                        data_thread.start()
+                                        if self.msg[:3] == '150':
+                                            data_thread.join()
+                                else:
+                                    if self.active_conn() == "200":
+                                        data_thread = threading.Thread(target=self.data_send, args=(fname, ))
+                                        data_thread.daemon = True
+                                        self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
+                                        self.server_rcv()
+                                        data_thread.start()
+                                        if self.msg[:3] == '150':
+                                            data_thread.join()
                                 self.server_rcv()
-                                data_thread.start()
-                                if self.msg[:3] == '150':
-                                    data_thread.join()
-                        self.server_rcv()
 
             else:
                 print("?Invalid command.")

@@ -363,6 +363,7 @@ class comm_sock:
                                 self.s.send("TYPE I\r\n".encode("ascii"))
                                 self.server_rcv()
                             for item in l:
+                                item = item.strip()
                                 if(input("mget " + item + "?") == 'y'):
                                     data_thread = threading.Thread(target=self.data_rcv, args=(item, ))
                                     self.passive_conn()

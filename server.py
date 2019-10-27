@@ -8,6 +8,8 @@ import random
 import shutil
 import platform
 import glob
+import subprocess
+
 
 class comm_sock:
     def __init__(self, client, addr):
@@ -95,9 +97,11 @@ class comm_sock:
 
             if msg == "LIST\r\n":
                 self.reply("150 Here comes the directory listing.")
-                reply_msg = ""
-                for x in os.listdir(self.dirpath):
-                    reply_msg = reply_msg + x + "\r\n"
+                reply_msg = subprocess.check_output('ls -l', shell=True).decode("utf-8")
+                reply_msg = reply_msg.replace("\n", "\r\n")
+                # reply_msg = ""
+                # for x in os.listdir(self.dirpath):
+                #     reply_msg = reply_msg + x + "\r\n"
                 self.data_send(reply_msg)
                 self.data_client.close()
                 self.reply("226 Directory send OK.")

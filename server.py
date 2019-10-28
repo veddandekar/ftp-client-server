@@ -14,7 +14,6 @@ class comm_sock:
     def __init__(self, client, addr):
         self.name = addr
         if platform.system() != "Windows":
-            import pam
             client.send("220 (ChiaVedu 1.0)\r\n".encode('ascii'))
             if self.authenticate(client):
                 client.send("230 login successful.\nUsing ASCII mode to tranfer files.\r\n".encode('ascii'))
@@ -182,7 +181,15 @@ class comm_sock:
                         self.reply("250 Delete operation successful.")
                     except:
                         self.reply("550 Delete operation failed.")
-
+            
+            elif msg[:10] == "SITE CHMOD":
+                mode, fname = msg[11:].split(" ")
+                try:
+                    os.chmod(fname.strip(), int(mode, 8))
+                    self.reply("250 SITE CHMOD command successful.")
+                except:
+                    self.reply("550 SITE CHMOD command failed.")
+                    
             elif msg[:4] == "RNFR":
                 arg_from = msg[5:].strip()
 
@@ -296,6 +303,8 @@ def listener(ip, port):
 
 
 if __name__ == "__main__":
+    if platform.system() != "Windows":
+        import pam
     if len(sys.argv) == 2:
         ip = sys.argv[1]
         port = 21

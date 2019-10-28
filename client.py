@@ -270,6 +270,7 @@ class comm_sock:
                     self.s.send(("RMD " + dir + "\r\n").encode('ascii'))
                     self.server_rcv()
 
+
             elif inpt[:6] == "delete":
                 arg = inpt.split(" ")
                 if len(arg) == 1:
@@ -283,7 +284,23 @@ class comm_sock:
                     dir = arg[1]
                     self.s.send(("DELE " + dir + "\r\n").encode('ascii'))
                     self.server_rcv()
+                    
 
+            elif inpt[:5] == "chmod":
+                arg = inpt.split(" ")
+                if len(arg) == 1:  # NEW
+                    mode = input("mode: ")
+                    fname = input("file-name: ")
+                elif len(arg) == 2:
+                    mode = arg[1]
+                    fname = input("file-name: ")
+                else:
+                    mode = arg[1]
+                    fname = arg[2]
+                self.s.send(("SITE CHMOD " + mode + " " + fname + "\r\n").encode("ascii"))
+                self.server_rcv()
+                
+                
             elif inpt == "ascii":
                 self.s.send(("TYPE A\r\n").encode('ascii'))
                 self.server_rcv()

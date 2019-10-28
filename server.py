@@ -3,7 +3,6 @@ import socket
 import threading
 import os
 import sys
-import pam
 import random
 import shutil
 import platform
@@ -15,6 +14,7 @@ class comm_sock:
     def __init__(self, client, addr):
         self.name = addr
         if platform.system() != "Windows":
+            import pam
             client.send("220 (ChiaVedu 1.0)\r\n".encode('ascii'))
             if self.authenticate(client):
                 client.send("230 login successful.\nUsing ASCII mode to tranfer files.\r\n".encode('ascii'))
@@ -22,12 +22,12 @@ class comm_sock:
                 client.send("530 Login incorrect.\r\n".encode('ascii'))
                 return
         else:
-            client.send("(ChiaVedu 1.0)\r\n".encode('ascii'))
-            client.send("Authentication not supported on Windows\r\n".encode("ascii"))
+            client.send("(ChiaVedu 1.0)\nAuthentication not supported on Windows\r\n".encode('ascii'))
         self.client = client
         self.ascii = True
         self.passive = True
         self.dirpath = os.path.expanduser("~")
+        os.chdir(self.dirpath)
         self.cmd_process()
         return
 
@@ -97,8 +97,11 @@ class comm_sock:
 
             if msg == "LIST\r\n":
                 self.reply("150 Here comes the directory listing.")
-                reply_msg = subprocess.check_output('ls -l', shell=True).decode("utf-8")
-                reply_msg = reply_msg.replace("\n", "\r\n")
+                if platform.system() != "Windows":
+                    reply_msg = subprocess.check_output('ls -l', shell=True).decode("utf-8")
+                    reply_msg = reply_msg.replace("\n", "\r\n")
+                else:
+                    reply_msg =  subprocess.check_output('dir', shell=True).decode("utf-8")
                 # reply_msg = ""
                 # for x in os.listdir(self.dirpath):
                 #     reply_msg = reply_msg + x + "\r\n"

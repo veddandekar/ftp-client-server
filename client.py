@@ -12,12 +12,10 @@ class comm_sock:
     def __init__(self, server, host):
         self.name = host
         self.end = False
-        # self.rcvstatus = False
         self.s = server
         self.msg = ""
         self.passive = True
         self.ascii = True
-        # self.auth = False
         self.server_rcv()
         if self.msg[:3] == '220':
             name = input('Name(' + self.name + ':' + getpass.getuser() + '): ')
@@ -42,6 +40,9 @@ class comm_sock:
         self.msg = ""
         while a != "\r":
             a = self.s.recv(1).decode('ascii')
+            if not a:
+                print("Server Dsiconnected")
+                sys.exit(0)
             self.msg = self.msg + a
         print(self.msg)
         self.s.recv(1).decode('ascii')
@@ -311,14 +312,10 @@ class comm_sock:
                 self.server_rcv()
                 self.ascii = False
 
-            elif inpt == "exit" or inpt == "disconnect" or inpt == "quit":                                      #handle bye and close
+            elif inpt == "exit" or inpt == "disconnect" or inpt == "quit":
                 self.s.send(("QUIT\r\n").encode('ascii'))
                 self.server_rcv()
                 self.end = True
-
-            # elif inpt == "system":
-            #     self.s.send("SYST\r\n".encode('ascii'))
-            #     self.server_rcv()
 
             elif inpt[:3] == "get":
                 arg = inpt.split(" ")
@@ -463,7 +460,7 @@ class comm_sock:
                     arg = inpt[5:].split(" ")
 
                 for each in arg:
-                    flist = glob.glob(each)                     #Check
+                    flist = glob.glob(each)
                     for fname in flist:
                         if not os.path.isfile(os.path.join(os.getcwd(), fname)):
                             print("No such file or directory")

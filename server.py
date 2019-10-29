@@ -272,7 +272,7 @@ class comm_sock:
                 a1, a2, a3, a4, p1, p2 = msg[5:].split(",")
                 self.data_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.data_client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                self.data_client.bind((ip, 1212))
+                self.data_client.bind((ip, 20))
                 host = a1 + '.' + a2 + '.' + a3 + '.' + a4
                 port = int(p1) * 256 + int(p2)
                 self.data_client.connect((host, port))

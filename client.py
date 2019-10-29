@@ -42,6 +42,7 @@ class comm_sock:
             a = self.s.recv(1).decode('ascii')
             if not a:
                 print("Server Dsiconnected")
+                self.end = True
                 sys.exit(0)
             self.msg = self.msg + a
         print(self.msg)
@@ -340,6 +341,7 @@ class comm_sock:
                         data_thread.start()
                         if self.msg[:3] == '150':
                             data_thread.join()
+                            self.server_rcv()
                 else:
                     if self.active_conn() == "200":
                         data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
@@ -349,7 +351,7 @@ class comm_sock:
                         data_thread.start()
                         if self.msg[:3] == '150':
                             data_thread.join()
-                self.server_rcv()
+                            self.server_rcv()
 
             elif inpt[:4] == "mget":
                 mode = self.ascii
@@ -371,7 +373,9 @@ class comm_sock:
                             self.s.send(("NLST " + fname + "\r\n").encode("ascii"))
                             self.server_rcv()
                             self.data_rcv(None, True)
+                            self.server_rcv()
                             l = self.nlst_data.split("\n")
+
                             if not mode:
                                 self.ascii = False
                                 self.s.send("TYPE I\r\n".encode("ascii"))
@@ -396,6 +400,7 @@ class comm_sock:
                             self.s.send(("NLST " + fname + "\r\n").encode("ascii"))
                             self.server_rcv()
                             self.data_rcv(None, True)
+                            self.server_rcv()
                             l = self.nlst_data.split("\r\n")
                             if not mode:
                                 self.ascii = False

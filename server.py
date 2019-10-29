@@ -221,6 +221,7 @@ class comm_sock:
                 rmsg = rmsg[:-2]
                 self.data_send(rmsg)
                 self.data_client.close()
+                self.reply("226 Directory send OK.")
 
             elif msg[:4] == "RETR":
                 arg = msg[5:].strip()
@@ -233,8 +234,7 @@ class comm_sock:
                         testChunk = f.read(4096)
                     except:
                         self.data_client.close()
-                        self.reply("550 Failed to open file.")
-                        self.reply("550 Try Binary mode.")
+                        self.reply("550 Failed to open file. Try Binary Mode.")
                         continue
                     f.seek(0, 0)
                     self.reply("150 Opening data connection for " + arg + "(" + str(os.path.getsize(os.path.join(self.dirpath, arg))) + ")")
@@ -247,7 +247,6 @@ class comm_sock:
                     self.reply("226 Transfer complete")
                 else:
                     self.reply("550 Failed to open file.")
-                    self.reply("550 Try Binary mode.")
 
             elif msg == "PASV\r\n":
                 port = random.randint(1024, 65535)

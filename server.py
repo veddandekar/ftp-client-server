@@ -125,7 +125,7 @@ class comm_sock:
                 if not arg:                                             #Missing arguments
                     self.reply("550 Failed to change directory.")
 
-                elif arg[0] == "\\":                                    #Change directly to specified directory
+                else:                                                   #Change to specified directory
                     try:
                         os.chdir(arg)
                         self.dirpath = os.getcwd()
@@ -133,59 +133,29 @@ class comm_sock:
                     except:
                         self.reply("550 Failed to change directory.")
 
-                else:                                                   #Change to relative directory
-                    try:
-                        os.chdir(os.path.join(self.dirpath, arg))
-                        self.dirpath = os.getcwd()
-                        self.reply("250 Directory successfully changed to \"" + self.dirpath + "\"")
-                    except:
-                        self.reply("550 Failed to change directory.")
-
             elif msg[:3] == "MKD":                                      #For mkdir
                 arg = msg[4:].strip()
-                if arg[0] == "\\":                                      #mkdir in specified directory
-                    try:
-                        os.mkdir(arg)
-                        self.reply("257 \"" + os.path.join(self.dirpath, arg) + "\" created.")
-                    except:
-                        self.reply("550 Create directory operation failed.")
-
-                else:                                                   #mkdir in present directory
-                    try:
-                        os.mkdir(os.path.join(self.dirpath, arg))
-                        self.reply("257 \"" + os.path.join(self.dirpath, arg) + "\" created.")
-                    except:
-                        self.reply("550 Create directory operation failed.")
+                try:                                                        #mkdir in specified directory
+                    os.mkdir(arg)
+                    self.reply("257 \"" + os.path.join(self.dirpath, arg) + "\" created.")
+                except:
+                    self.reply("550 Create directory operation failed.")
 
             elif msg[:3] == "RMD":                                      #For rmdir
                 arg = msg[4:].strip()
-                if arg[0] == "\\":                                      #rmdir in specified directory
-                    try:
-                        shutil.rmtree(arg)
-                        self.reply("250 Remove directory operation successful")
-                    except:
-                        self.reply("550 Remove directory operation failed.")
-                else:                                                   #rmdir in present directory
-                    try:
-                        shutil.rmtree(os.path.join(self.dirpath, arg))
-                        self.reply("250 remove directory operation successful")
-                    except:
-                        self.reply("550 Remove directory operation failed.")
+                try:                                                        #rmdir in specified directory
+                    shutil.rmtree(arg)
+                    self.reply("250 remove directory operation successful")
+                except:
+                    self.reply("550 Remove directory operation failed.")
 
             elif msg[:4] == "DELE":                                     #for delete
                 arg = msg[5:].strip()
-                if arg[0] == "\\":                                      #delete in specified directory
-                    try:
-                        os.remove(arg)
-                        self.reply("250 Delete operation successful.")
-                    except:
-                        self.reply("550 Delete operation failed.")
-                else:                                                   #delete in relative directory
-                    try:
-                        os.remove(os.path.join(self.dirpath, arg))
-                        self.reply("250 Delete operation successful.")
-                    except:
-                        self.reply("550 Delete operation failed.")
+                try:                                                        #delete specified file
+                    os.remove(os.path.join(self.dirpath, arg))
+                    self.reply("250 Delete operation successful.")
+                except:
+                    self.reply("550 Delete operation failed.")
 
             elif msg[:10] == "SITE CHMOD":                              #For chmod
                 mode, fname = msg[11:].split(" ")

@@ -16,6 +16,7 @@ class comm_sock:
         self.msg = ""
         self.passive = True
         self.ascii = True
+        self.prompt = True
         self.server_rcv()
         if self.msg[:3] == '220':
             name = input('Name(' + self.name + ':' + getpass.getuser() + '): ')
@@ -41,7 +42,7 @@ class comm_sock:
         while a != "\r":
             a = self.s.recv(1).decode('ascii')
             if not a:
-                print("Server Dsiconnected")
+                print("Server Disconnected.")
                 self.end = True
                 sys.exit(0)
             self.msg = self.msg + a
@@ -204,6 +205,7 @@ class comm_sock:
                                 self.data_rcv()
                                 self.server_rcv()
 
+
             elif inpt[:6] == "rename":
                 arg = inpt.split(" ")
                 if len(arg) == 1:  # NEW
@@ -243,6 +245,9 @@ class comm_sock:
                     self.s.send(("CWD " + dir + "\r\n").encode('ascii'))
                     self.server_rcv()
 
+            elif inpt == "prom" or inpt =="prompt":
+                self.prompt = not self.prompt
+                print("Interactive mode is " + str(self.prompt))
 
             elif inpt[:5] == "mkdir":
                 arg = inpt.split(" ")
@@ -301,7 +306,9 @@ class comm_sock:
                     fname = arg[2]
                 self.s.send(("SITE CHMOD " + mode + " " + fname + "\r\n").encode("ascii"))
                 self.server_rcv()
-                
+
+            elif inpt == "lcd":
+                print("Local directory now " + str(os.getcwd()))
                 
             elif inpt == "ascii":
                 self.s.send(("TYPE A\r\n").encode('ascii'))
@@ -375,14 +382,14 @@ class comm_sock:
                             self.data_rcv(None, True)
                             self.server_rcv()
                             l = self.nlst_data.split("\n")
-
+                            l = l[:-1]                                  #CHECK IF AN EXTRA ITEM IS ALMOST GENERATED
                             if not mode:
                                 self.ascii = False
                                 self.s.send("TYPE I\r\n".encode("ascii"))
                                 self.server_rcv()
                             for item in l:
                                 item = item.strip()
-                                if(input("mget " + item + "?") == 'y'):
+                                if(not self.prompt or input("mget " + item + "?") == 'y'):
                                     data_thread = threading.Thread(target=self.data_rcv, args=(item, ))
                                     self.passive_conn()
                                     self.s.send(("RETR " + item + "\r\n").encode("ascii"))
@@ -401,7 +408,8 @@ class comm_sock:
                             self.server_rcv()
                             self.data_rcv(None, True)
                             self.server_rcv()
-                            l = self.nlst_data.split("\r\n")
+                            l = self.nlst_data.split("\n")
+                            l = l[:-1]
                             if not mode:
                                 self.ascii = False
                                 self.s.send("TYPE I\r\n".encode("ascii"))
@@ -470,7 +478,7 @@ class comm_sock:
                         if not os.path.isfile(os.path.join(os.getcwd(), fname)):
                             print("No such file or directory")
                         else:
-                            if input("mput " + fname + "?") == "y":
+                            if not self.prompt or input("mput " + fname + "?") == "y":
                                 if self.passive:
                                     if self.passive_conn() == "227":
                                         data_thread = threading.Thread(target=self.data_send, args=(fname, ))

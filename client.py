@@ -181,29 +181,42 @@ class comm_sock:
                 self.passive = not self.passive
                 print("Passive: " + str(self.passive))
 
-            elif inpt == "ls" or inpt == "dir":
-                if self.passive:
-                    if self.passive_conn() == "227":
-                        self.ascii = True
-                        self.s.send("TYPE A\r\n".encode("ascii"))
-                        self.server_rcv()
-                        if self.msg[:3] == '200':
-                            self.s.send("LIST\r\n".encode("ascii"))
-                            self.server_rcv()
-                            if self.msg[:3] == "150":
-                                self.data_rcv()
-                                self.server_rcv()
+            elif inpt[:2] == "ls" or inpt[:3] == "dir" or inpt[:4] == "mdir":
+                l = inpt.strip().split(" ")
+                l = l[1:]
+                if len(l) == 0:
+                    filename = None
+                    l = [""]
+                elif len(l) == 1:
+                    filename = None
                 else:
-                    if self.active_conn() == "200":
-                        self.ascii = True
-                        self.s.send("TYPE A\r\n".encode("ascii"))
-                        self.server_rcv()
-                        if self.msg[:3] == '200':
-                            self.s.send("LIST\r\n".encode("ascii"))
+                    filename = l[-1]
+                    l = l[:-1]
+                if filename == "-":
+                    filename = None
+                for each in l:
+                    if self.passive:
+                        if self.passive_conn() == "227":
+                            self.ascii = True
+                            self.s.send("TYPE A\r\n".encode("ascii"))
                             self.server_rcv()
-                            if self.msg[:3] == "150":
-                                self.data_rcv()
+                            if self.msg[:3] == '200':
+                                self.s.send(("LIST " + each + "\r\n").encode("ascii"))
                                 self.server_rcv()
+                                if self.msg[:3] == "150":
+                                    self.data_rcv(filename)
+                                    self.server_rcv()
+                    else:
+                        if self.active_conn() == "200":
+                            self.ascii = True
+                            self.s.send("TYPE A\r\n".encode("ascii"))
+                            self.server_rcv()
+                            if self.msg[:3] == '200':
+                                self.s.send("LIST " + each + "\r\n".encode("ascii"))
+                                self.server_rcv()
+                                if self.msg[:3] == "150":
+                                    self.data_rcv(filename)
+                                    self.server_rcv()
 
 
             elif inpt[:6] == "rename":

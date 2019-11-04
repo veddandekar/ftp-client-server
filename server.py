@@ -96,14 +96,19 @@ class comm_sock:
                 print(self.name, " has lost connection.")
                 return
 
-            if msg == "LIST\r\n":                                       #For ls
+            if msg[:4] == "LIST":                                       #For ls
+                arg = msg.strip().split(" ")
+                if len(arg) == 2:
+                    arg = arg[1]
+                else:
+                    arg = ""
                 self.reply("150 Here comes the directory listing.")
 
                 if platform.system() != "Windows":                                                     #If not Linux/Mac, run "ls -la"
-                    reply_msg = subprocess.check_output('ls -l', shell=True).decode("utf-8")
+                    reply_msg = subprocess.check_output('ls -l ' + arg, shell=True).decode("utf-8")
                     reply_msg = reply_msg.replace("\n", "\r\n")
                 else:                                                                                   #If Windows, run "dir"
-                    reply_msg =  subprocess.check_output('dir', shell=True).decode("utf-8")
+                    reply_msg =  subprocess.check_output('dir ' + arg, shell=True).decode("utf-8")          #CHECK
 
                 self.data_send(reply_msg)
                 self.data_client.close()

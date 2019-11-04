@@ -9,17 +9,35 @@ import glob
 
 
 class comm_sock:
-    def __init__(self, server, host):
-        self.name = host
+    def __init__(self, host=None, port=None):
+        self.host = host
+        self.port = port
         self.end = False
-        self.s = server
         self.msg = ""
         self.passive = True
         self.ascii = True
+        self.s = None
         self.prompt = True
+        self.authenticated = False
+        send_thread = threading.Thread(target=self.cmd_process)
+        send_thread.start()
+        send_thread.join()
+
+    def make_connection(self):
+        self.host = socket.gethostbyname(self.host)
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print("Trying "+ self.host)
+        try:
+            self.s.connect((self.host, self.port))
+            print("Connected to " + self.host + ":" + str(self.port))
+            self.authenticate()
+        except:
+            print("Connection Refused.")
+
+    def authenticate(self):
         self.server_rcv()
         if self.msg[:3] == '220':
-            name = input('Name(' + self.name + ':' + getpass.getuser() + '): ')
+            name = input('Name(' + self.host + ':' + getpass.getuser() + '): ')
             if not name:
                 name = getpass.getuser()
             self.s.send(("USER " + name + "\r\n").encode('ascii'))
@@ -28,13 +46,13 @@ class comm_sock:
                 password = getpass.getpass()
                 self.s.send(("PASS " + password + "\r\n").encode('ascii'))
                 self.server_rcv()
-                if not self.msg[:3] == '230':
-                    print("Login failed.")
-                    self.end = True
+                if self.msg[:3] == '230':
+                    self.authenticated = True
                     return
-        send_thread = threading.Thread(target=self.cmd_process)
-        send_thread.start()
-        send_thread.join()
+                print("Login failed.")
+                self.end = True
+                return
+
 
     def server_rcv(self):
         a = ""
@@ -177,10 +195,26 @@ class comm_sock:
                 continue
             if self.end:
                 return
-            if inpt[0] == '!':
+            if inpt[:4] == "open":
+                args = inpt[5:].strip().split(" ")
+                self.ip = socket.gethostname()
+                self.ip = socket.gethostbyname(self.ip)
+                if len(args) == 1:
+                    self.host = args[0]
+                    self.port = 21
+                elif len(args) == 2:
+                    self.host = args[0]
+                    self.port = int(args[1])
+                self.make_connection()
+                continue
+
+            elif inpt[0] == '!':
                 if inpt[1:3] == "cd":
                     arg = inpt.split(" ")
-                    os.chdir(arg[1])
+                    try:
+                        os.chdir(arg[1])
+                    except:
+                        print("Invalid directory.")
                 else:
                     os.system(inpt[1:])
 
@@ -188,7 +222,30 @@ class comm_sock:
                 self.passive = not self.passive
                 print("Passive: " + str(self.passive))
 
+            elif inpt == "prom" or inpt =="prompt":
+                self.prompt = not self.prompt
+                print("Interactive mode is " + str(self.prompt))
+
+            elif inpt == "lcd":
+                print("Local directory now " + str(os.getcwd()))
+
+            elif inpt == "exit" or inpt == "disconnect" or inpt == "quit":          #CHECK
+                if self.s:
+                    self.s.send(("QUIT\r\n").encode('ascii'))
+                    self.server_rcv()
+                    self.s.close()
+                    self.end = True
+                else:
+                    print("Goodbye.")
+                return
+
             elif inpt[:2] == "ls" or inpt[:3] == "dir" or inpt[:4] == "mdir":
+                if not self.s:
+                    print("Not connected.")
+                    continue
+                if not self.authenticated:
+                    print("PLease login")
+                    continue
                 l = inpt.strip().split(" ")
                 if l[0] == "ls" or l[0] == "dir":
                     l = l[:3]
@@ -205,7 +262,7 @@ class comm_sock:
                     filename = None
                 if filename:
                     if input("Output to local-file: " + filename + "? ") != "y":
-                        continue;
+                        continue
 
                 loop = 0
                 for each in l:
@@ -240,6 +297,9 @@ class comm_sock:
                     loop = loop + 1
 
             elif inpt[:6] == "rename":
+                if not self.s:
+                    print("Not connected.")
+                    continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:  # NEW
                     arg_from = input("from-name: ")
@@ -257,14 +317,23 @@ class comm_sock:
                     self.server_rcv()
 
             elif inpt[:3] == "pwd":
+                if not self.s:
+                    print("Not connected.")
+                    continue
                 self.s.send("PWD\r\n".encode('ascii'))
                 self.server_rcv()
 
             elif inpt[:4] == "cdup":
+                if not self.s:
+                    print("Not connected.")
+                    continue
                 self.s.send("CDUP\r\n".encode('ascii'))
                 self.server_rcv()
 
             elif inpt[:2] == "cd":
+                if not self.s:
+                    print("Not connected.")
+                    continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:
                     dir = input("(remote-directory): ")
@@ -278,11 +347,10 @@ class comm_sock:
                     self.s.send(("CWD " + dir + "\r\n").encode('ascii'))
                     self.server_rcv()
 
-            elif inpt == "prom" or inpt =="prompt":
-                self.prompt = not self.prompt
-                print("Interactive mode is " + str(self.prompt))
-
             elif inpt[:5] == "mkdir":
+                if not self.s:
+                    print("Not connected.")
+                    continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:
                     dir = input("(remote-directory): ")
@@ -297,6 +365,9 @@ class comm_sock:
                     self.server_rcv()
 
             elif inpt[:5] == "rmdir":
+                if not self.s:
+                    print("Not connected.")
+                    continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:
                     dir = input("(remote-directory): ")
@@ -312,6 +383,9 @@ class comm_sock:
 
 
             elif inpt[:6] == "delete":
+                if not self.s:
+                    print("Not connected.")
+                    continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:
                     dir = input("(remote-file): ")
@@ -324,9 +398,12 @@ class comm_sock:
                     dir = arg[1]
                     self.s.send(("DELE " + dir + "\r\n").encode('ascii'))
                     self.server_rcv()
-                    
+
 
             elif inpt[:5] == "chmod":
+                if not self.s:
+                    print("Not connected.")
+                    continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:  # NEW
                     mode = input("mode: ")
@@ -340,25 +417,26 @@ class comm_sock:
                 self.s.send(("SITE CHMOD " + mode + " " + fname + "\r\n").encode("ascii"))
                 self.server_rcv()
 
-            elif inpt == "lcd":
-                print("Local directory now " + str(os.getcwd()))
-                
             elif inpt == "ascii":
+                if not self.s:
+                    print("Not connected.")
+                    continue
                 self.s.send(("TYPE A\r\n").encode('ascii'))
                 self.server_rcv()
                 self.ascii = True
 
             elif inpt == "binary" or inpt == "image":
+                if not self.s:
+                    print("Not connected.")
+                    continue
                 self.s.send(("TYPE I\r\n").encode('ascii'))
                 self.server_rcv()
                 self.ascii = False
 
-            elif inpt == "exit" or inpt == "disconnect" or inpt == "quit":
-                self.s.send(("QUIT\r\n").encode('ascii'))
-                self.server_rcv()
-                self.end = True
-
             elif inpt[:3] == "get":
+                if not self.s:
+                    print("Not connected.")
+                    continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:
                     arg = input("(remote-file): ")
@@ -394,6 +472,9 @@ class comm_sock:
                             self.server_rcv()
 
             elif inpt[:4] == "mget":
+                if not self.s:
+                    print("Not connected.")
+                    continue
                 mode = self.ascii
                 arg = inpt.split(" ")
                 if len(arg) == 1:
@@ -460,6 +541,9 @@ class comm_sock:
                                         self.server_rcv()
 
             elif inpt[:3] == "put":
+                if not self.s:
+                    print("Not connected.")
+                    continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:
                     arg = input("(local-file): ")
@@ -496,6 +580,9 @@ class comm_sock:
                     self.server_rcv()
 
             elif inpt[:4] == "mput":
+                if not self.s:
+                    print("Not connected.")
+                    continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:
                     arg = input("(local-files): ").split(" ")
@@ -537,31 +624,19 @@ class comm_sock:
 
 if __name__ == "__main__":
     global ip
-    if len(sys.argv) == 2:
+    if len(sys.argv) == 1:
+        comm_sock()
+    elif len(sys.argv) == 2:
         host = sys.argv[1]
         ip = socket.gethostname()
         ip = socket.gethostbyname(ip)
         port = 21
+        comm_sock(host, port)
     elif len(sys.argv) == 3:
         host = sys.argv[1]
         port = int(sys.argv[2])
         ip = socket.gethostname()
         ip = socket.gethostbyname(ip)
+        comm_sock(host, port)
     else:
-        host = input("Enter IP: ")
-        ip = input("Enter IP to bind to: ")
-        try:
-            port = int(input("Enter Port: "))
-        except:
-            port = 21
-    host = socket.gethostbyname(host)
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    print("Trying "+ host)
-    try:
-        s.connect((host, port))
-    except:
-        print("Connection Refused.")
-        sys.exit()
-    print("Connected to " + host + ":" + str(port))
-    comm_sock(s, host)
-    s.close()
+        print("Invalid arguments")

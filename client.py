@@ -49,7 +49,7 @@ class comm_sock:
         print(self.msg)
         self.s.recv(1).decode('ascii')
 
-    def data_rcv(self, file=None, NLST=False):
+    def data_rcv(self, file=None, NLST=False, append=False):
         success = True
         data = ""
         if not file:
@@ -76,7 +76,11 @@ class comm_sock:
                         success = False
                     except:
                         continue
-                f = open(os.getcwd() + "/" + file, "wb")
+                if append:
+                    f = open(os.getcwd() + "/" + file, "ab")            #FIX FOR WINDOWS
+                else:
+                    f = open(os.getcwd() + "/" + file, "wb")
+
                 while chunk:
                     f.write(chunk)
                     chunk = self.data_server.recv(4096)
@@ -89,7 +93,10 @@ class comm_sock:
                         success = False
                     except:
                         continue
-                f = open(os.getcwd() + "/" + file, "w")
+                if append:
+                    f = open(os.getcwd() + "/" + file, "a")            #FIX FOR WINDOWS
+                else:
+                    f = open(os.getcwd() + "/" + file, "w")
                 while chunk:
                     f.write(chunk)
                     chunk = self.data_server.recv(4096).decode('ascii')
@@ -183,6 +190,8 @@ class comm_sock:
 
             elif inpt[:2] == "ls" or inpt[:3] == "dir" or inpt[:4] == "mdir":
                 l = inpt.strip().split(" ")
+                if l[0] == "ls" or l[0] == "dir":
+                    l = l[:3]
                 l = l[1:]
                 if len(l) == 0:
                     filename = None
@@ -194,6 +203,11 @@ class comm_sock:
                     l = l[:-1]
                 if filename == "-":
                     filename = None
+                if filename:
+                    if input("Output to local-file: " + filename + "? ") != "y":
+                        continue;
+
+                loop = 0
                 for each in l:
                     if self.passive:
                         if self.passive_conn() == "227":
@@ -204,7 +218,10 @@ class comm_sock:
                                 self.s.send(("LIST " + each + "\r\n").encode("ascii"))
                                 self.server_rcv()
                                 if self.msg[:3] == "150":
-                                    self.data_rcv(filename)
+                                    if loop == 0:
+                                        self.data_rcv(filename)
+                                    else:
+                                        self.data_rcv(filename, append=True)
                                     self.server_rcv()
                     else:
                         if self.active_conn() == "200":
@@ -215,9 +232,12 @@ class comm_sock:
                                 self.s.send("LIST " + each + "\r\n".encode("ascii"))
                                 self.server_rcv()
                                 if self.msg[:3] == "150":
-                                    self.data_rcv(filename)
+                                    if loop == 0:
+                                        self.data_rcv(filename)
+                                    else:
+                                        self.data_rcv(filename, append=True)
                                     self.server_rcv()
-
+                    loop = loop + 1
 
             elif inpt[:6] == "rename":
                 arg = inpt.split(" ")

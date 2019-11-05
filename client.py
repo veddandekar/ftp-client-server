@@ -83,7 +83,7 @@ class comm_sock:
                 chunk = self.data_server.recv(4096).decode('ascii')
                 chunk = chunk.replace("\r\n", "\n")
             if not NLST:
-                print(data, end='')
+                print(data, end="")
             else:
                 self.nlst_data = data
         else:
@@ -95,9 +95,9 @@ class comm_sock:
                     except:
                         continue
                 if append:
-                    f = open(os.getcwd() + "/" + file, "ab")            #FIX FOR WINDOWS
+                    f = open(os.path.join(os.getcwd(), file), "ab")            #FIX FOR WINDOWS
                 else:
-                    f = open(os.getcwd() + "/" + file, "wb")
+                    f = open(os.path.join(os.getcwd(), file), "wb")
 
                 while chunk:
                     f.write(chunk)
@@ -112,26 +112,26 @@ class comm_sock:
                     except:
                         continue
                 if append:
-                    f = open(os.getcwd() + "/" + file, "a")            #FIX FOR WINDOWS
+                    f = open(os.path.join(os.getcwd(), file), "a")            #FIX FOR WINDOWS
                 else:
-                    f = open(os.getcwd() + "/" + file, "w")
+                    f = open(os.path.join(os.getcwd(), file), "w")
                 while chunk:
                     f.write(chunk)
                     chunk = self.data_server.recv(4096).decode('ascii')
                     chunk = chunk.replace("\r\n", "\n")
                 f.close()
-            print(str(os.path.getsize(os.getcwd() + "/" + file)) + " bytes received.")
+            print(str(os.path.getsize(os.path.join(os.getcwd(), file))) + " bytes received.")
         self.data_server.close()
 
     def data_send(self, file):
         if not self.ascii:
-            f = open(os.getcwd() + "/" + file, "rb")
+            f = open(os.path.join(os.getcwd(), file), "rb")
             chunk = f.read(4096)
             while chunk:
                 self.data_server.send(chunk)
                 chunk = f.read(4096)
         else:
-            f = open(os.getcwd() + "/" + file, "r")
+            f = open(os.path.join(os.getcwd(), file), "r")
             try:
                 testChunk = f.read(4096)
             except:
@@ -148,7 +148,7 @@ class comm_sock:
                 chunk = chunk.replace("\n", "\r\n")
 
         f.close()
-        print(str(os.path.getsize(os.getcwd() + "/" + file)) + " bytes sent.")
+        print(str(os.path.getsize(os.path.join(os.getcwd(), file))) + " bytes sent.")
         self.data_server.close()
 
 

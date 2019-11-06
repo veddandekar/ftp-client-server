@@ -60,29 +60,40 @@ class comm_sock:
         print(outpt, end="", flush=True)
         result = ""
         while True:
-            if os.name == 'nt':
-                import msvcrt
-                result = msvcrt.getch()
-            else:
+            if os.name != 'nt':
                 import termios
                 fd = sys.stdin.fileno()
 
-            oldterm = termios.tcgetattr(fd)
-            newattr = termios.tcgetattr(fd)
-            newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
-            termios.tcsetattr(fd, termios.TCSANOW, newattr)
+                oldterm = termios.tcgetattr(fd)
+                newattr = termios.tcgetattr(fd)
+                newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
+                termios.tcsetattr(fd, termios.TCSANOW, newattr)
 
-            try:
-                c = sys.stdin.read(1)
-            except IOError:
-                pass
-            finally:
-                termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
+                try:
+                    c = sys.stdin.read(1)
+                except IOError:
+                    pass
+                finally:
+                    termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
+            else:
+                import msvcrt
+                c = msvcrt.getch()
 
-            if c != '\n':
-                if ord(c) == 27:
-                    c = c + sys.stdin.read(2)
-                    if c == "\x1b[A":
+            if c != '\n' and ord(c) != 13:
+                if ord(c) == 27 or ord(c) == 224:
+                    if os.name != 'nt':
+                        c = c + sys.stdin.read(2)
+                        upArrow = False
+                        downArrow = False
+                    else:
+                        c = msvcrt.getch()
+                        if ord(c) == 72:
+                            upArrow = True
+                            downArrow = False
+                        elif ord(c) == 80:
+                            upArrow = False
+                            downArrow = True
+                    if c == "\x1b[A" or upArrow:
                         # print(self.history[self.histnum])
                         print("ftp> ", end="")
                         print('\r{0}'.format("ftp> " + self.history[self.histnum]) + ' ' * 30 + '\b' * 30, end="")
@@ -91,7 +102,7 @@ class comm_sock:
                         if self.histnum == -1:
                             self.histnum = 0
 
-                    elif c == "\x1b[B":
+                    elif c == "\x1b[B" or downArrow:
                         self.histnum = self.histnum + 1
                         if self.histnum == len(self.history):
                             self.histnum = self.histnum - 1
@@ -99,14 +110,18 @@ class comm_sock:
                         print('\r{0}'.format("ftp> " + self.history[self.histnum]) + ' ' * 30 + '\b' * 30, end="")
                         result = self.history[self.histnum]
                     c = ""
-                elif c == '\x7f':
+                elif c == '\x7f' or ord(c) == 8:
                     if result != "":
                         print('\b \b', end="", flush=True)
                         result = result[:-1]
                     continue
                 else:
-                    result = result + c
-                    print(c, end="", flush=True)
+                    if os.name == 'nt':
+                        result = result + c.decode("utf-8")
+                        print(c.decode("utf-8"), end="", flush=True)
+                    else:
+                        result = result + c
+                        print(c, end="", flush=True)
                     continue
             else:
                 break

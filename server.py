@@ -13,15 +13,18 @@ import subprocess
 class comm_sock:
     def __init__(self, client, addr):                                                                                   #Initialize class variables and call authenticate
         self.name = addr
+        self.authenticated = False
         if platform.system() != "Windows":
             client.send("220 (ChiaVedu 1.0)\r\n".encode('ascii'))
             if self.authenticate(client):
                 client.send("230 login successful.\nUsing ASCII mode to tranfer files.\r\n".encode('ascii'))
+                self.authenticated = True
             else:
                 client.send("530 Login incorrect.\r\n".encode('ascii'))
                 return
         else:
             client.send("(ChiaVedu 1.0)\nAuthentication not supported on Windows\r\n".encode('ascii'))
+            self.authenticated = True
         self.client = client
         self.ascii = True
         self.passive = True
@@ -96,7 +99,9 @@ class comm_sock:
                 print(self.name, " has lost connection.")
                 return
 
-            if msg[:4] == "LIST":                                       #For ls
+            if not self.authenticated:
+                self.reply("530 Please login with USER and PASS.")
+            elif msg[:4] == "LIST":                                       #For ls
                 arg = msg.strip().split(" ")
                 if len(arg) == 2:
                     arg = arg[1]

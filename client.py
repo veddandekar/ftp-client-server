@@ -10,6 +10,9 @@ import glob
 
 class comm_sock:
     def __init__(self, host=None, port=None):
+        self.history = []
+        self.histnum = -1
+        self.histlinesize = []
         self.host = host
         self.port = port
         self.end = False
@@ -18,7 +21,7 @@ class comm_sock:
         self.ascii = True
         self.s = None
         self.prompt = True
-        self.authenticated = False
+        self.authenticated = True
         send_thread = threading.Thread(target=self.cmd_process)
         send_thread.start()
         send_thread.join()
@@ -53,6 +56,59 @@ class comm_sock:
                 self.end = True
                 return
 
+    def takeInput(self, outpt):
+        print(outpt, end="", flush=True)
+        result = ""
+        while True:
+            if os.name == 'nt':
+                import msvcrt
+                result = msvcrt.getch()
+            else:
+                import termios
+                fd = sys.stdin.fileno()
+
+            oldterm = termios.tcgetattr(fd)
+            newattr = termios.tcgetattr(fd)
+            newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
+            termios.tcsetattr(fd, termios.TCSANOW, newattr)
+
+            try:
+                c = sys.stdin.read(1)
+            except IOError:
+                pass
+            finally:
+                termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
+
+            if c != '\n':
+                if ord(c) == 27:
+                    c = c + sys.stdin.read(2)
+                    if c == "\x1b[A":
+                        # print(self.history[self.histnum])
+                        print('\r{0}'.format(self.history[self.histnum]) + ' ' * 30 + '\b' * 30, end="")
+                        result = self.history[self.histnum]
+                        self.histnum = self.histnum - 1
+                        if self.histnum == -1:
+                            self.histnum = 0
+
+                    elif c == "\x1b[B":
+                        self.histnum = self.histnum + 1
+                        if self.histnum == len(self.history):
+                            self.histnum = self.histnum - 1
+                        # print(self.history[self.histnum])
+                        print('\r{0}'.format(self.history[self.histnum]) + ' ' * 30 + '\b' * 30, end="")
+                        result = self.history[self.histnum]
+                    c = ""
+                elif c == '\x7f':
+                    print('\b \b', end="", flush=True)
+                    result = result[:-1]
+                    continue
+                result = result + c
+                print(c, end="", flush=True)
+                continue
+            else:
+                break
+        print()
+        return result
 
     def server_rcv(self):
         a = ""
@@ -190,7 +246,9 @@ class comm_sock:
 
     def cmd_process(self):
         while not self.end:
-            inpt = input("ftp> ")
+            inpt = self.takeInput("ftp> ")
+            self.history.append(inpt)
+            self.histnum = len(self.history) - 1
             if not inpt:
                 continue
             if self.end:
@@ -243,9 +301,9 @@ class comm_sock:
                 if not self.s:
                     print("Not connected.")
                     continue
-                if not self.authenticated:
-                    print("PLease login")
-                    continue
+                # if not self.authenticated:
+                #     print("PLease login")
+                #     continue
                 l = inpt.strip().split(" ")
                 if l[0] == "ls" or l[0] == "dir":
                     l = l[:3]
@@ -261,7 +319,7 @@ class comm_sock:
                 if filename == "-":
                     filename = None
                 if filename:
-                    if input("Output to local-file: " + filename + "? ") != "y":
+                    if self.takeInput("Output to local-file: " + filename + "? ") != "y":
                         continue
 
                 loop = 0
@@ -302,11 +360,11 @@ class comm_sock:
                     continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:  # NEW
-                    arg_from = input("from-name: ")
-                    arg_to = input("to-name: ")
+                    arg_from = self.takeInput("from-name: ")
+                    arg_to = self.takeInput("to-name: ")
                 elif len(arg) == 2:
                     arg_from = arg[1]
-                    arg_to = input("to-name: ")
+                    arg_to = self.takeInput("to-name: ")
                 else:
                     arg_from = arg[1]
                     arg_to = arg[2]
@@ -336,7 +394,7 @@ class comm_sock:
                     continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:
-                    dir = input("(remote-directory): ")
+                    dir = self.takeInput("(remote-directory): ")
                     if not dir:
                         print("Invalid usage.")
                     else:
@@ -353,7 +411,7 @@ class comm_sock:
                     continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:
-                    dir = input("(remote-directory): ")
+                    dir = self.takeInput("(remote-directory): ")
                     if not dir:
                         print("Invalid usage.")
                     else:
@@ -370,7 +428,7 @@ class comm_sock:
                     continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:
-                    dir = input("(remote-directory): ")
+                    dir = self.takeInput("(remote-directory): ")
                     if not dir:
                         print("Invalid usage.")
                     else:
@@ -388,7 +446,7 @@ class comm_sock:
                     continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:
-                    dir = input("(remote-file): ")
+                    dir = self.takeInput("(remote-file): ")
                     if not dir:
                         print("Invalid usage.")
                     else:
@@ -406,11 +464,11 @@ class comm_sock:
                     continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:  # NEW
-                    mode = input("mode: ")
-                    fname = input("file-name: ")
+                    mode = self.takeInput("mode: ")
+                    fname = self.takeInput("file-name: ")
                 elif len(arg) == 2:
                     mode = arg[1]
-                    fname = input("file-name: ")
+                    fname = self.takeInput("file-name: ")
                 else:
                     mode = arg[1]
                     fname = arg[2]
@@ -439,8 +497,8 @@ class comm_sock:
                     continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:
-                    arg = input("(remote-file): ")
-                    fname = input("(local-file): ")
+                    arg = self.takeInput("(remote-file): ")
+                    fname = self.takeInput("(local-file): ")
                     if not (arg or fname):
                         print("Invalid usage.")
                         continue
@@ -478,7 +536,7 @@ class comm_sock:
                 mode = self.ascii
                 arg = inpt.split(" ")
                 if len(arg) == 1:
-                    arg = input("(remote-files): ").split(" ")
+                    arg = self.takeInput("(remote-files): ").split(" ")
                     if not arg:
                         print("Invalid usage.")
                         continue
@@ -503,7 +561,7 @@ class comm_sock:
                                 self.server_rcv()
                             for item in l:
                                 item = item.strip()
-                                if(not self.prompt or input("mget " + item + "?") == 'y'):
+                                if(not self.prompt or self.takeInput("mget " + item + "?") == 'y'):
                                     data_thread = threading.Thread(target=self.data_rcv, args=(item, ))
                                     self.passive_conn()
                                     self.s.send(("RETR " + item + "\r\n").encode("ascii"))
@@ -529,7 +587,7 @@ class comm_sock:
                                 self.s.send("TYPE I\r\n".encode("ascii"))
                                 self.server_rcv()
                             for item in l:
-                                if(input("mget " + item + "?") == 'y'):
+                                if(self.takeInput("mget " + item + "?") == 'y'):
                                     data_thread = threading.Thread(target=self.data_rcv, args=(item, ))
                                     data_thread.daemon = True
                                     self.active_conn()
@@ -546,8 +604,8 @@ class comm_sock:
                     continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:
-                    arg = input("(local-file): ")
-                    fname = input("(remote-file): ")
+                    arg = self.takeInput("(local-file): ")
+                    fname = self.takeInput("(remote-file): ")
                     if not (arg or fname):
                         print("Invalid usage.")
                         continue
@@ -585,7 +643,7 @@ class comm_sock:
                     continue
                 arg = inpt.split(" ")
                 if len(arg) == 1:
-                    arg = input("(local-files): ").split(" ")
+                    arg = self.takeInput("(local-files): ").split(" ")
                     if not arg:
                         print("Invalid usage.")
                         continue
@@ -598,7 +656,7 @@ class comm_sock:
                         if not os.path.isfile(os.path.join(os.getcwd(), fname)):
                             print("No such file or directory")
                         else:
-                            if not self.prompt or input("mput " + fname + "?") == "y":
+                            if not self.prompt or self.takeInput("mput " + fname + "?") == "y":
                                 if self.passive:
                                     if self.passive_conn() == "227":
                                         data_thread = threading.Thread(target=self.data_send, args=(fname, ))

@@ -84,7 +84,8 @@ class comm_sock:
                     c = c + sys.stdin.read(2)
                     if c == "\x1b[A":
                         # print(self.history[self.histnum])
-                        print('\r{0}'.format(self.history[self.histnum]) + ' ' * 30 + '\b' * 30, end="")
+                        print("ftp> ", end="")
+                        print('\r{0}'.format("ftp> " + self.history[self.histnum]) + ' ' * 30 + '\b' * 30, end="")
                         result = self.history[self.histnum]
                         self.histnum = self.histnum - 1
                         if self.histnum == -1:
@@ -95,16 +96,18 @@ class comm_sock:
                         if self.histnum == len(self.history):
                             self.histnum = self.histnum - 1
                         # print(self.history[self.histnum])
-                        print('\r{0}'.format(self.history[self.histnum]) + ' ' * 30 + '\b' * 30, end="")
+                        print('\r{0}'.format("ftp> " + self.history[self.histnum]) + ' ' * 30 + '\b' * 30, end="")
                         result = self.history[self.histnum]
                     c = ""
                 elif c == '\x7f':
-                    print('\b \b', end="", flush=True)
-                    result = result[:-1]
+                    if result != "":
+                        print('\b \b', end="", flush=True)
+                        result = result[:-1]
                     continue
-                result = result + c
-                print(c, end="", flush=True)
-                continue
+                else:
+                    result = result + c
+                    print(c, end="", flush=True)
+                    continue
             else:
                 break
         print()

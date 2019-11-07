@@ -47,6 +47,8 @@ class comm_sock:
             else:
                 print(self.name, "has lost connection.")
                 return False
+            if user == "anonymous":
+                return True
         return pam.pam().authenticate(user, password)                   #Matches provided user and password with system user and password
 
 

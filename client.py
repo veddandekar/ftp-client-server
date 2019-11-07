@@ -22,9 +22,14 @@ class comm_sock:
         self.s = None
         self.prompt = True
         self.authenticated = True
-        send_thread = threading.Thread(target=self.cmd_process)
-        send_thread.start()
-        send_thread.join()
+        self.controller()
+
+    def controller(self):
+        try:
+            self.cmd_process()
+        except KeyboardInterrupt:
+            print()
+            self.controller()
 
     def make_connection(self):
         self.host = socket.gethostbyname(self.host)
@@ -57,6 +62,8 @@ class comm_sock:
                 return
 
     def takeInput(self, outpt):
+        if outpt == None:
+            outpt = "ftp> "
         print(outpt, end="", flush=True)
         result = ""
         while True:
@@ -94,9 +101,7 @@ class comm_sock:
                             upArrow = False
                             downArrow = True
                     if c == "\x1b[A" or upArrow:
-                        # print(self.history[self.histnum])
-                        print("ftp> ", end="")
-                        print('\r{0}'.format("ftp> " + self.history[self.histnum]) + ' ' * 30 + '\b' * 30, end="")
+                        print('\r{0}'.format(outpt + self.history[self.histnum]) + ' ' * 30 + '\b' * 30, end="")
                         result = self.history[self.histnum]
                         self.histnum = self.histnum - 1
                         if self.histnum == -1:
@@ -106,8 +111,7 @@ class comm_sock:
                         self.histnum = self.histnum + 1
                         if self.histnum == len(self.history):
                             self.histnum = self.histnum - 1
-                        # print(self.history[self.histnum])
-                        print('\r{0}'.format("ftp> " + self.history[self.histnum]) + ' ' * 30 + '\b' * 30, end="")
+                        print('\r{0}'.format(outpt + self.history[self.histnum]) + ' ' * 30 + '\b' * 30, end="")
                         result = self.history[self.histnum]
                     c = ""
                 elif c == '\x7f' or ord(c) == 8:
@@ -263,439 +267,439 @@ class comm_sock:
 
 
     def cmd_process(self):
-        while not self.end:
-            inpt = self.takeInput("ftp> ")
-            self.history.append(inpt)
-            self.histnum = len(self.history) - 1
-            if not inpt:
-                continue
-            if self.end:
-                return
-            if inpt[:4] == "open":
-                args = inpt[5:].strip().split(" ")
-                self.ip = socket.gethostname()
-                self.ip = socket.gethostbyname(self.ip)
-                if len(args) == 1:
-                    self.host = args[0]
-                    self.port = 21
-                elif len(args) == 2:
-                    self.host = args[0]
-                    self.port = int(args[1])
-                self.make_connection()
-                continue
-
-            elif inpt[0] == '!':
-                if inpt[1:3] == "cd":
-                    arg = inpt.split(" ")
-                    try:
-                        os.chdir(arg[1])
-                    except:
-                        print("Invalid directory.")
-                else:
-                    os.system(inpt[1:])
-
-            elif inpt == "passive":
-                self.passive = not self.passive
-                print("Passive: " + str(self.passive))
-
-            elif inpt == "prom" or inpt =="prompt":
-                self.prompt = not self.prompt
-                print("Interactive mode is " + str(self.prompt))
-
-            elif inpt == "lcd":
-                print("Local directory now " + str(os.getcwd()))
-
-            elif inpt == "exit" or inpt == "disconnect" or inpt == "quit":          #CHECK
-                if self.s:
-                    self.s.send(("QUIT\r\n").encode('ascii'))
-                    self.server_rcv()
-                    self.s.close()
-                    self.end = True
-                else:
-                    print("Goodbye.")
-                return
-
-            elif inpt[:2] == "ls" or inpt[:3] == "dir" or inpt[:4] == "mdir":
-                if not self.s:
-                    print("Not connected.")
+            while not self.end:
+                inpt = self.takeInput("ftp> ")
+                self.history.append(inpt)
+                self.histnum = len(self.history) - 1
+                if not inpt:
                     continue
-                # if not self.authenticated:
-                #     print("PLease login")
-                #     continue
-                l = inpt.strip().split(" ")
-                if l[0] == "ls" or l[0] == "dir":
-                    l = l[:3]
-                l = l[1:]
-                if len(l) == 0:
-                    filename = None
-                    l = [""]
-                elif len(l) == 1:
-                    filename = None
-                else:
-                    filename = l[-1]
-                    l = l[:-1]
-                if filename == "-":
-                    filename = None
-                if filename:
-                    if self.takeInput("Output to local-file: " + filename + "? ") != "y":
+                if self.end:
+                    return
+                if inpt[:4] == "open":
+                    args = inpt[5:].strip().split(" ")
+                    self.ip = socket.gethostname()
+                    self.ip = socket.gethostbyname(self.ip)
+                    if len(args) == 1:
+                        self.host = args[0]
+                        self.port = 21
+                    elif len(args) == 2:
+                        self.host = args[0]
+                        self.port = int(args[1])
+                    self.make_connection()
+                    continue
+
+                elif inpt[0] == '!':
+                    if inpt[1:3] == "cd":
+                        arg = inpt.split(" ")
+                        try:
+                            os.chdir(arg[1])
+                        except:
+                            print("Invalid directory.")
+                    else:
+                        os.system(inpt[1:])
+
+                elif inpt == "passive":
+                    self.passive = not self.passive
+                    print("Passive: " + str(self.passive))
+
+                elif inpt == "prom" or inpt =="prompt":
+                    self.prompt = not self.prompt
+                    print("Interactive mode is " + str(self.prompt))
+
+                elif inpt == "lcd":
+                    print("Local directory now " + str(os.getcwd()))
+
+                elif inpt == "exit" or inpt == "disconnect" or inpt == "quit":          #CHECK
+                    if self.s:
+                        self.s.send(("QUIT\r\n").encode('ascii'))
+                        self.server_rcv()
+                        self.s.close()
+                        self.end = True
+                    else:
+                        print("Goodbye.")
+                    return
+
+                elif inpt[:2] == "ls" or inpt[:3] == "dir" or inpt[:4] == "mdir":
+                    if not self.s:
+                        print("Not connected.")
                         continue
-
-                loop = 0
-                for each in l:
-                    if self.passive:
-                        if self.passive_conn() == "227":
-                            self.ascii = True
-                            self.s.send("TYPE A\r\n".encode("ascii"))
-                            self.server_rcv()
-                            if self.msg[:3] == '200':
-                                self.s.send(("LIST " + each + "\r\n").encode("ascii"))
-                                self.server_rcv()
-                                if self.msg[:3] == "150":
-                                    if loop == 0:
-                                        self.data_rcv(filename)
-                                    else:
-                                        self.data_rcv(filename, append=True)
-                                    self.server_rcv()
+                    # if not self.authenticated:
+                    #     print("PLease login")
+                    #     continue
+                    l = inpt.strip().split(" ")
+                    if l[0] == "ls" or l[0] == "dir":
+                        l = l[:3]
+                    l = l[1:]
+                    if len(l) == 0:
+                        filename = None
+                        l = [""]
+                    elif len(l) == 1:
+                        filename = None
                     else:
-                        if self.active_conn() == "200":
-                            self.ascii = True
-                            self.s.send("TYPE A\r\n".encode("ascii"))
-                            self.server_rcv()
-                            if self.msg[:3] == '200':
-                                self.s.send("LIST " + each + "\r\n".encode("ascii"))
-                                self.server_rcv()
-                                if self.msg[:3] == "150":
-                                    if loop == 0:
-                                        self.data_rcv(filename)
-                                    else:
-                                        self.data_rcv(filename, append=True)
-                                    self.server_rcv()
-                    loop = loop + 1
+                        filename = l[-1]
+                        l = l[:-1]
+                    if filename == "-":
+                        filename = None
+                    if filename:
+                        if self.takeInput("Output to local-file: " + filename + "? ") != "y":
+                            continue
 
-            elif inpt[:6] == "rename":
-                if not self.s:
-                    print("Not connected.")
-                    continue
-                arg = inpt.split(" ")
-                if len(arg) == 1:  # NEW
-                    arg_from = self.takeInput("from-name: ")
-                    arg_to = self.takeInput("to-name: ")
-                elif len(arg) == 2:
-                    arg_from = arg[1]
-                    arg_to = self.takeInput("to-name: ")
-                else:
-                    arg_from = arg[1]
-                    arg_to = arg[2]
-                self.s.send(("RNFR " + arg_from + "\r\n").encode("ascii"))
-                self.server_rcv()
-                if self.msg[:3] == "350":
-                    self.s.send(("RNTO " + arg_to + "\r\n").encode("ascii"))
+                    loop = 0
+                    for each in l:
+                        if self.passive:
+                            if self.passive_conn() == "227":
+                                self.ascii = True
+                                self.s.send("TYPE A\r\n".encode("ascii"))
+                                self.server_rcv()
+                                if self.msg[:3] == '200':
+                                    self.s.send(("LIST " + each + "\r\n").encode("ascii"))
+                                    self.server_rcv()
+                                    if self.msg[:3] == "150":
+                                        if loop == 0:
+                                            self.data_rcv(filename)
+                                        else:
+                                            self.data_rcv(filename, append=True)
+                                        self.server_rcv()
+                        else:
+                            if self.active_conn() == "200":
+                                self.ascii = True
+                                self.s.send("TYPE A\r\n".encode("ascii"))
+                                self.server_rcv()
+                                if self.msg[:3] == '200':
+                                    self.s.send("LIST " + each + "\r\n".encode("ascii"))
+                                    self.server_rcv()
+                                    if self.msg[:3] == "150":
+                                        if loop == 0:
+                                            self.data_rcv(filename)
+                                        else:
+                                            self.data_rcv(filename, append=True)
+                                        self.server_rcv()
+                        loop = loop + 1
+
+                elif inpt[:6] == "rename":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    arg = inpt.split(" ")
+                    if len(arg) == 1:  # NEW
+                        arg_from = self.takeInput("from-name: ")
+                        arg_to = self.takeInput("to-name: ")
+                    elif len(arg) == 2:
+                        arg_from = arg[1]
+                        arg_to = self.takeInput("to-name: ")
+                    else:
+                        arg_from = arg[1]
+                        arg_to = arg[2]
+                    self.s.send(("RNFR " + arg_from + "\r\n").encode("ascii"))
+                    self.server_rcv()
+                    if self.msg[:3] == "350":
+                        self.s.send(("RNTO " + arg_to + "\r\n").encode("ascii"))
+                        self.server_rcv()
+
+                elif inpt[:3] == "pwd":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    self.s.send("PWD\r\n".encode('ascii'))
                     self.server_rcv()
 
-            elif inpt[:3] == "pwd":
-                if not self.s:
-                    print("Not connected.")
-                    continue
-                self.s.send("PWD\r\n".encode('ascii'))
-                self.server_rcv()
+                elif inpt[:4] == "cdup":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    self.s.send("CDUP\r\n".encode('ascii'))
+                    self.server_rcv()
 
-            elif inpt[:4] == "cdup":
-                if not self.s:
-                    print("Not connected.")
-                    continue
-                self.s.send("CDUP\r\n".encode('ascii'))
-                self.server_rcv()
-
-            elif inpt[:2] == "cd":
-                if not self.s:
-                    print("Not connected.")
-                    continue
-                arg = inpt.split(" ")
-                if len(arg) == 1:
-                    dir = self.takeInput("(remote-directory): ")
-                    if not dir:
-                        print("Invalid usage.")
+                elif inpt[:2] == "cd":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    arg = inpt.split(" ")
+                    if len(arg) == 1:
+                        dir = self.takeInput("(remote-directory): ")
+                        if not dir:
+                            print("Invalid usage.")
+                        else:
+                            self.s.send(("CWD " + dir + "\r\n").encode('ascii'))
+                            self.server_rcv()
                     else:
+                        dir = arg[1]
                         self.s.send(("CWD " + dir + "\r\n").encode('ascii'))
                         self.server_rcv()
-                else:
-                    dir = arg[1]
-                    self.s.send(("CWD " + dir + "\r\n").encode('ascii'))
-                    self.server_rcv()
 
-            elif inpt[:5] == "mkdir":
-                if not self.s:
-                    print("Not connected.")
-                    continue
-                arg = inpt.split(" ")
-                if len(arg) == 1:
-                    dir = self.takeInput("(remote-directory): ")
-                    if not dir:
-                        print("Invalid usage.")
+                elif inpt[:5] == "mkdir":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    arg = inpt.split(" ")
+                    if len(arg) == 1:
+                        dir = self.takeInput("(remote-directory): ")
+                        if not dir:
+                            print("Invalid usage.")
+                        else:
+                            self.s.send(("MKD " + dir + "\r\n").encode('ascii'))
+                            self.server_rcv()
                     else:
+                        dir = arg[1]
                         self.s.send(("MKD " + dir + "\r\n").encode('ascii'))
                         self.server_rcv()
-                else:
-                    dir = arg[1]
-                    self.s.send(("MKD " + dir + "\r\n").encode('ascii'))
-                    self.server_rcv()
 
-            elif inpt[:5] == "rmdir":
-                if not self.s:
-                    print("Not connected.")
-                    continue
-                arg = inpt.split(" ")
-                if len(arg) == 1:
-                    dir = self.takeInput("(remote-directory): ")
-                    if not dir:
-                        print("Invalid usage.")
+                elif inpt[:5] == "rmdir":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    arg = inpt.split(" ")
+                    if len(arg) == 1:
+                        dir = self.takeInput("(remote-directory): ")
+                        if not dir:
+                            print("Invalid usage.")
+                        else:
+                            self.s.send(("RMD " + dir + "\r\n").encode('ascii'))
+                            self.server_rcv()
                     else:
+                        dir = arg[1]
                         self.s.send(("RMD " + dir + "\r\n").encode('ascii'))
                         self.server_rcv()
-                else:
-                    dir = arg[1]
-                    self.s.send(("RMD " + dir + "\r\n").encode('ascii'))
-                    self.server_rcv()
 
 
-            elif inpt[:6] == "delete":
-                if not self.s:
-                    print("Not connected.")
-                    continue
-                arg = inpt.split(" ")
-                if len(arg) == 1:
-                    dir = self.takeInput("(remote-file): ")
-                    if not dir:
-                        print("Invalid usage.")
+                elif inpt[:6] == "delete":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    arg = inpt.split(" ")
+                    if len(arg) == 1:
+                        dir = self.takeInput("(remote-file): ")
+                        if not dir:
+                            print("Invalid usage.")
+                        else:
+                            self.s.send(("DELE " + dir + "\r\n").encode('ascii'))
+                            self.server_rcv()
                     else:
+                        dir = arg[1]
                         self.s.send(("DELE " + dir + "\r\n").encode('ascii'))
                         self.server_rcv()
-                else:
-                    dir = arg[1]
-                    self.s.send(("DELE " + dir + "\r\n").encode('ascii'))
+
+
+                elif inpt[:5] == "chmod":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    arg = inpt.split(" ")
+                    if len(arg) == 1:  # NEW
+                        mode = self.takeInput("mode: ")
+                        fname = self.takeInput("file-name: ")
+                    elif len(arg) == 2:
+                        mode = arg[1]
+                        fname = self.takeInput("file-name: ")
+                    else:
+                        mode = arg[1]
+                        fname = arg[2]
+                    self.s.send(("SITE CHMOD " + mode + " " + fname + "\r\n").encode("ascii"))
                     self.server_rcv()
 
-
-            elif inpt[:5] == "chmod":
-                if not self.s:
-                    print("Not connected.")
-                    continue
-                arg = inpt.split(" ")
-                if len(arg) == 1:  # NEW
-                    mode = self.takeInput("mode: ")
-                    fname = self.takeInput("file-name: ")
-                elif len(arg) == 2:
-                    mode = arg[1]
-                    fname = self.takeInput("file-name: ")
-                else:
-                    mode = arg[1]
-                    fname = arg[2]
-                self.s.send(("SITE CHMOD " + mode + " " + fname + "\r\n").encode("ascii"))
-                self.server_rcv()
-
-            elif inpt == "ascii":
-                if not self.s:
-                    print("Not connected.")
-                    continue
-                self.s.send(("TYPE A\r\n").encode('ascii'))
-                self.server_rcv()
-                self.ascii = True
-
-            elif inpt == "binary" or inpt == "image":
-                if not self.s:
-                    print("Not connected.")
-                    continue
-                self.s.send(("TYPE I\r\n").encode('ascii'))
-                self.server_rcv()
-                self.ascii = False
-
-            elif inpt[:3] == "get":
-                if not self.s:
-                    print("Not connected.")
-                    continue
-                arg = inpt.split(" ")
-                if len(arg) == 1:
-                    arg = self.takeInput("(remote-file): ")
-                    fname = self.takeInput("(local-file): ")
-                    if not (arg or fname):
-                        print("Invalid usage.")
+                elif inpt == "ascii":
+                    if not self.s:
+                        print("Not connected.")
                         continue
-                elif len(arg) == 2:
-                    fname = arg[1]
-                    arg = arg[1]
-                else:
-                    fname = arg[2]
-                    arg = arg[1]
+                    self.s.send(("TYPE A\r\n").encode('ascii'))
+                    self.server_rcv()
+                    self.ascii = True
 
-                if self.passive:
-                    if self.passive_conn() == "227":
-                        data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
-                        self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
-                        self.server_rcv()
-                        data_thread.start()
-                        if self.msg[:3] == '150':
-                            data_thread.join()
-                            self.server_rcv()
-                else:
-                    if self.active_conn() == "200":
-                        data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
-                        data_thread.daemon = True
-                        self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
-                        self.server_rcv()
-                        data_thread.start()
-                        if self.msg[:3] == '150':
-                            data_thread.join()
-                            self.server_rcv()
-
-            elif inpt[:4] == "mget":
-                if not self.s:
-                    print("Not connected.")
-                    continue
-                mode = self.ascii
-                arg = inpt.split(" ")
-                if len(arg) == 1:
-                    arg = self.takeInput("(remote-files): ").split(" ")
-                    if not arg:
-                        print("Invalid usage.")
+                elif inpt == "binary" or inpt == "image":
+                    if not self.s:
+                        print("Not connected.")
                         continue
-                else:
-                    arg = inpt[5:].split(" ")
-                for fname in arg:
-                    if self.passive:
-                        if self.passive_conn() == "227":
-                            if not self.ascii:
-                                self.ascii = True
-                                self.s.send("TYPE A\r\n".encode("ascii"))
-                                self.server_rcv()
-                            self.s.send(("NLST " + fname + "\r\n").encode("ascii"))
-                            self.server_rcv()
-                            self.data_rcv(None, True)
-                            self.server_rcv()
-                            l = self.nlst_data.split("\n")
-                            l = l[:-1]                                  #CHECK IF AN EXTRA ITEM IS ALMOST GENERATED
-                            if not mode:
-                                self.ascii = False
-                                self.s.send("TYPE I\r\n".encode("ascii"))
-                                self.server_rcv()
-                            for item in l:
-                                item = item.strip()
-                                if(not self.prompt or self.takeInput("mget " + item + "?") == 'y'):
-                                    data_thread = threading.Thread(target=self.data_rcv, args=(item, ))
-                                    self.passive_conn()
-                                    self.s.send(("RETR " + item + "\r\n").encode("ascii"))
-                                    self.server_rcv()
-                                    data_thread.start()
-                                    if self.msg[:3] == '150':
-                                        data_thread.join()
-                                        self.server_rcv()
+                    self.s.send(("TYPE I\r\n").encode('ascii'))
+                    self.server_rcv()
+                    self.ascii = False
+
+                elif inpt[:3] == "get":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    arg = inpt.split(" ")
+                    if len(arg) == 1:
+                        arg = self.takeInput("(remote-file): ")
+                        fname = self.takeInput("(local-file): ")
+                        if not (arg or fname):
+                            print("Invalid usage.")
+                            continue
+                    elif len(arg) == 2:
+                        fname = arg[1]
+                        arg = arg[1]
                     else:
-                        if self.active_conn() == "200":
-                            if not self.ascii:
-                                self.ascii = True
-                                self.s.send("TYPE A\r\n".encode("ascii"))
-                                self.server_rcv()
-                            self.s.send(("NLST " + fname + "\r\n").encode("ascii"))
-                            self.server_rcv()
-                            self.data_rcv(None, True)
-                            self.server_rcv()
-                            l = self.nlst_data.split("\n")
-                            l = l[:-1]
-                            if not mode:
-                                self.ascii = False
-                                self.s.send("TYPE I\r\n".encode("ascii"))
-                                self.server_rcv()
-                            for item in l:
-                                if(self.takeInput("mget " + item + "?") == 'y'):
-                                    data_thread = threading.Thread(target=self.data_rcv, args=(item, ))
-                                    data_thread.daemon = True
-                                    self.active_conn()
-                                    self.s.send(("RETR " + item + "\r\n").encode("ascii"))
-                                    self.server_rcv()
-                                    data_thread.start()
-                                    if self.msg[:3] == '150':
-                                        data_thread.join()
-                                        self.server_rcv()
+                        fname = arg[2]
+                        arg = arg[1]
 
-            elif inpt[:3] == "put":
-                if not self.s:
-                    print("Not connected.")
-                    continue
-                arg = inpt.split(" ")
-                if len(arg) == 1:
-                    arg = self.takeInput("(local-file): ")
-                    fname = self.takeInput("(remote-file): ")
-                    if not (arg or fname):
-                        print("Invalid usage.")
-                        continue
-                elif len(arg) == 2:
-                    fname = arg[1]
-                    arg = arg[1]
-                else:
-                    fname = arg[2]
-                    arg = arg[1]
-                if not os.path.isfile(os.path.join(os.getcwd(), arg)):
-                    print("No such file or directory")
-                else:
                     if self.passive:
                         if self.passive_conn() == "227":
-                            data_thread = threading.Thread(target=self.data_send, args=(arg, ))
-                            self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
+                            data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
+                            self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
                             self.server_rcv()
                             data_thread.start()
                             if self.msg[:3] == '150':
                                 data_thread.join()
+                                self.server_rcv()
                     else:
                         if self.active_conn() == "200":
-                            data_thread = threading.Thread(target=self.data_send, args=(arg, ))
+                            data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
                             data_thread.daemon = True
-                            self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
+                            self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
                             self.server_rcv()
                             data_thread.start()
                             if self.msg[:3] == '150':
                                 data_thread.join()
-                    self.server_rcv()
-
-            elif inpt[:4] == "mput":
-                if not self.s:
-                    print("Not connected.")
-                    continue
-                arg = inpt.split(" ")
-                if len(arg) == 1:
-                    arg = self.takeInput("(local-files): ").split(" ")
-                    if not arg:
-                        print("Invalid usage.")
-                        continue
-                else:
-                    arg = inpt[5:].split(" ")
-
-                for each in arg:
-                    flist = glob.glob(each)
-                    for fname in flist:
-                        if not os.path.isfile(os.path.join(os.getcwd(), fname)):
-                            print("No such file or directory")
-                        else:
-                            if not self.prompt or self.takeInput("mput " + fname + "?") == "y":
-                                if self.passive:
-                                    if self.passive_conn() == "227":
-                                        data_thread = threading.Thread(target=self.data_send, args=(fname, ))
-                                        self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
-                                        self.server_rcv()
-                                        data_thread.start()
-                                        if self.msg[:3] == '150':
-                                            data_thread.join()
-                                else:
-                                    if self.active_conn() == "200":
-                                        data_thread = threading.Thread(target=self.data_send, args=(fname, ))
-                                        data_thread.daemon = True
-                                        self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
-                                        self.server_rcv()
-                                        data_thread.start()
-                                        if self.msg[:3] == '150':
-                                            data_thread.join()
                                 self.server_rcv()
 
-            else:
-                print("?Invalid command.")
+                elif inpt[:4] == "mget":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    mode = self.ascii
+                    arg = inpt.split(" ")
+                    if len(arg) == 1:
+                        arg = self.takeInput("(remote-files): ").split(" ")
+                        if not arg:
+                            print("Invalid usage.")
+                            continue
+                    else:
+                        arg = inpt[5:].split(" ")
+                    for fname in arg:
+                        if self.passive:
+                            if self.passive_conn() == "227":
+                                if not self.ascii:
+                                    self.ascii = True
+                                    self.s.send("TYPE A\r\n".encode("ascii"))
+                                    self.server_rcv()
+                                self.s.send(("NLST " + fname + "\r\n").encode("ascii"))
+                                self.server_rcv()
+                                self.data_rcv(None, True)
+                                self.server_rcv()
+                                l = self.nlst_data.split("\n")
+                                l = l[:-1]                                  #CHECK IF AN EXTRA ITEM IS ALMOST GENERATED
+                                if not mode:
+                                    self.ascii = False
+                                    self.s.send("TYPE I\r\n".encode("ascii"))
+                                    self.server_rcv()
+                                for item in l:
+                                    item = item.strip()
+                                    if(not self.prompt or self.takeInput("mget " + item + "?") == 'y'):
+                                        data_thread = threading.Thread(target=self.data_rcv, args=(item, ))
+                                        self.passive_conn()
+                                        self.s.send(("RETR " + item + "\r\n").encode("ascii"))
+                                        self.server_rcv()
+                                        data_thread.start()
+                                        if self.msg[:3] == '150':
+                                            data_thread.join()
+                                            self.server_rcv()
+                        else:
+                            if self.active_conn() == "200":
+                                if not self.ascii:
+                                    self.ascii = True
+                                    self.s.send("TYPE A\r\n".encode("ascii"))
+                                    self.server_rcv()
+                                self.s.send(("NLST " + fname + "\r\n").encode("ascii"))
+                                self.server_rcv()
+                                self.data_rcv(None, True)
+                                self.server_rcv()
+                                l = self.nlst_data.split("\n")
+                                l = l[:-1]
+                                if not mode:
+                                    self.ascii = False
+                                    self.s.send("TYPE I\r\n".encode("ascii"))
+                                    self.server_rcv()
+                                for item in l:
+                                    if(self.takeInput("mget " + item + "?") == 'y'):
+                                        data_thread = threading.Thread(target=self.data_rcv, args=(item, ))
+                                        data_thread.daemon = True
+                                        self.active_conn()
+                                        self.s.send(("RETR " + item + "\r\n").encode("ascii"))
+                                        self.server_rcv()
+                                        data_thread.start()
+                                        if self.msg[:3] == '150':
+                                            data_thread.join()
+                                            self.server_rcv()
+
+                elif inpt[:3] == "put":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    arg = inpt.split(" ")
+                    if len(arg) == 1:
+                        arg = self.takeInput("(local-file): ")
+                        fname = self.takeInput("(remote-file): ")
+                        if not (arg or fname):
+                            print("Invalid usage.")
+                            continue
+                    elif len(arg) == 2:
+                        fname = arg[1]
+                        arg = arg[1]
+                    else:
+                        fname = arg[2]
+                        arg = arg[1]
+                    if not os.path.isfile(os.path.join(os.getcwd(), arg)):
+                        print("No such file or directory")
+                    else:
+                        if self.passive:
+                            if self.passive_conn() == "227":
+                                data_thread = threading.Thread(target=self.data_send, args=(arg, ))
+                                self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
+                                self.server_rcv()
+                                data_thread.start()
+                                if self.msg[:3] == '150':
+                                    data_thread.join()
+                        else:
+                            if self.active_conn() == "200":
+                                data_thread = threading.Thread(target=self.data_send, args=(arg, ))
+                                data_thread.daemon = True
+                                self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
+                                self.server_rcv()
+                                data_thread.start()
+                                if self.msg[:3] == '150':
+                                    data_thread.join()
+                        self.server_rcv()
+
+                elif inpt[:4] == "mput":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    arg = inpt.split(" ")
+                    if len(arg) == 1:
+                        arg = self.takeInput("(local-files): ").split(" ")
+                        if not arg:
+                            print("Invalid usage.")
+                            continue
+                    else:
+                        arg = inpt[5:].split(" ")
+
+                    for each in arg:
+                        flist = glob.glob(each)
+                        for fname in flist:
+                            if not os.path.isfile(os.path.join(os.getcwd(), fname)):
+                                print("No such file or directory")
+                            else:
+                                if not self.prompt or self.takeInput("mput " + fname + "?") == "y":
+                                    if self.passive:
+                                        if self.passive_conn() == "227":
+                                            data_thread = threading.Thread(target=self.data_send, args=(fname, ))
+                                            self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
+                                            self.server_rcv()
+                                            data_thread.start()
+                                            if self.msg[:3] == '150':
+                                                data_thread.join()
+                                    else:
+                                        if self.active_conn() == "200":
+                                            data_thread = threading.Thread(target=self.data_send, args=(fname, ))
+                                            data_thread.daemon = True
+                                            self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
+                                            self.server_rcv()
+                                            data_thread.start()
+                                            if self.msg[:3] == '150':
+                                                data_thread.join()
+                                    self.server_rcv()
+
+                else:
+                    print("?Invalid command.")
 
 
 if __name__ == "__main__":

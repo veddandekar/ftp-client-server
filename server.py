@@ -29,6 +29,7 @@ class comm_sock:
         self.ascii = True
         self.passive = True
         self.dirpath = os.path.expanduser("~")                          #Set directory to user's home directory
+        self.offset = 0
         os.chdir(self.dirpath)
         self.cmd_process()
         return
@@ -192,6 +193,10 @@ class comm_sock:
                 else:
                     self.reply("550 RNFR command failed.")
 
+            elif msg[:4] == "REST":
+                    self.offset = int(msg[5:].strip())
+                    self.reply("350 Restart position accepted (" + str(self.offset) + ").")
+
             elif msg[:4] == "TYPE":
                 if msg[5] == 'A':                                       #Switch to ASCII mode
                     self.ascii = True
@@ -223,8 +228,11 @@ class comm_sock:
                         self.data_client.close()
                         self.reply("550 Failed to open file. Try Binary Mode.")         #File read failure occurs
                         continue
-
-                    f.seek(0, 0)
+                    if self.offset == 0:
+                        f.seek(0, 0)
+                    else:
+                        f.seek(self.offset, 0)
+                    self.offset = 0
                     self.reply("150 Opening data connection for " + arg + "(" + str(os.path.getsize(os.path.join(self.dirpath, arg))) + ")")
 
                     while True:

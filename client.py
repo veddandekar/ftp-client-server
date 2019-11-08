@@ -165,6 +165,12 @@ class comm_sock:
             else:
                 self.nlst_data = data
         else:
+            if self.offset:
+                if not os.path.isfile(os.path.join(os.getcwd(), file)):
+                    print("Restart works only if local file already exists.")
+                    self.offset = 0
+                    self.data_server.close()
+                    return
             if not self.ascii:
                 while success:
                     try:
@@ -199,6 +205,7 @@ class comm_sock:
                     chunk = chunk.replace("\r\n", "\n")
                 f.close()
             print(str(os.path.getsize(os.path.join(os.getcwd(), file))) + " bytes received.")
+        self.offset = 0
         self.data_server.close()
 
     def data_send(self, file):
@@ -479,6 +486,12 @@ class comm_sock:
                         self.s.send(("DELE " + dir + "\r\n").encode('ascii'))
                         self.server_rcv()
 
+                elif inpt[:7] == "restart":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    self.offset = int(inpt[8:])
+                    print("restarting at " + str(self.offset) + ". execute get, put or append to initiate transfer")
 
                 elif inpt[:5] == "chmod":
                     if not self.s:
@@ -533,6 +546,11 @@ class comm_sock:
 
                     if self.passive:
                         if self.passive_conn() == "227":
+                            if self.offset != 0:
+                                self.s.send(("REST " + str(self.offset) + "\r\n").encode("ascii"))
+                                self.server_rcv()
+                                if self.msg[:3] != "350":
+                                    continue
                             data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
                             self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
                             self.server_rcv()
@@ -542,6 +560,11 @@ class comm_sock:
                                 self.server_rcv()
                     else:
                         if self.active_conn() == "200":
+                            if self.offset != 0:
+                                self.s.send(("REST " + str(self.offset) + "\r\n").encode("ascii"))
+                                self.server_rcv()
+                                if self.msg[:3] != "350":
+                                    continue
                             data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
                             data_thread.daemon = True
                             self.s.send(("RETR " + arg + "\r\n").encode("ascii"))

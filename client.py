@@ -23,6 +23,7 @@ class comm_sock:
         self.prompt = True
         self.authenticated = True
         self.controller()
+        self.offset = 0
 
     def controller(self):
         try:
@@ -179,6 +180,7 @@ class comm_sock:
                     except:
                         continue
                 if append:
+                    print("append")
                     f = open(os.path.join(os.getcwd(), file), "ab")            #FIX FOR WINDOWS
                 else:
                     f = open(os.path.join(os.getcwd(), file), "wb")
@@ -204,19 +206,25 @@ class comm_sock:
                     chunk = self.data_server.recv(4096).decode('ascii')
                     chunk = chunk.replace("\r\n", "\n")
                 f.close()
-            print(str(os.path.getsize(os.path.join(os.getcwd(), file))) + " bytes received.")
+            print(str(os.path.getsize(os.path.join(os.getcwd(), file))-int(self.offset)) + " bytes received.")
         self.offset = 0
         self.data_server.close()
 
     def data_send(self, file):
+
         if not self.ascii:
             f = open(os.path.join(os.getcwd(), file), "rb")
+            if self.offset == 0:
+                f.seek(0, 0)
+            else:
+                f.seek(self.offset, 0)
             chunk = f.read(4096)
             while chunk:
                 self.data_server.send(chunk)
                 chunk = f.read(4096)
         else:
             f = open(os.path.join(os.getcwd(), file), "r")
+
             try:
                 testChunk = f.read(4096)
             except:
@@ -225,6 +233,10 @@ class comm_sock:
                 self.data_server.close()
                 return
             f.seek(0, 0)
+            if self.offset == 0:
+                f.seek(0, 0)
+            else:
+                f.seek(self.offset, 0)
             chunk = f.read(4096)
             chunk = chunk.replace("\n", "\r\n")
             while chunk:
@@ -233,6 +245,7 @@ class comm_sock:
                 chunk = chunk.replace("\n", "\r\n")
 
         f.close()
+        self.offset = 0
         print(str(os.path.getsize(os.path.join(os.getcwd(), file))) + " bytes sent.")
         self.data_server.close()
 
@@ -493,6 +506,56 @@ class comm_sock:
                     self.offset = int(inpt[8:])
                     print("restarting at " + str(self.offset) + ". execute get, put or append to initiate transfer")
 
+                elif inpt[:5] == "reget":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    arg = inpt.split(" ")
+                    if len(arg) == 1:
+                        arg = self.takeInput("(remote-file): ")
+                        fname = self.takeInput("(local-file): ")
+                        if not (arg or fname):
+                            print("Invalid usage.")
+                            continue
+                    elif len(arg) == 2:
+                        fname = arg[1]
+                        arg = arg[1]
+                    else:
+                        fname = arg[2]
+                        arg = arg[1]
+
+                    self.offset = int(os.path.getsize(os.path.join(os.getcwd(), arg)))
+
+                    if self.passive:
+                        if self.passive_conn() == "227":
+                            if self.offset != 0:
+                                self.s.send(("REST " + str(self.offset) + "\r\n").encode("ascii"))
+                                self.server_rcv()
+                                if self.msg[:3] != "350":
+                                    continue
+                            data_thread = threading.Thread(target=self.data_rcv, args=(fname, False, True))
+                            self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
+                            self.server_rcv()
+                            data_thread.start()
+                            if self.msg[:3] == '150':
+                                data_thread.join()
+                                self.server_rcv()
+                    else:
+                        if self.active_conn() == "200":
+                            if self.offset != 0:
+                                self.s.send(("REST " + str(self.offset) + "\r\n").encode("ascii"))
+                                self.server_rcv()
+                                if self.msg[:3] != "350":
+                                    continue
+                            data_thread = threading.Thread(target=self.data_rcv, args=(fname,False, True))
+                            data_thread.daemon = True
+                            self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
+                            self.server_rcv()
+                            data_thread.start()
+                            if self.msg[:3] == '150':
+                                data_thread.join()
+                                self.server_rcv()
+
                 elif inpt[:5] == "chmod":
                     if not self.s:
                         print("Not connected.")
@@ -665,6 +728,11 @@ class comm_sock:
                     else:
                         if self.passive:
                             if self.passive_conn() == "227":
+                                if self.offset != 0:
+                                    self.s.send(("REST " + str(self.offset) + "\r\n").encode("ascii"))
+                                    self.server_rcv()
+                                    if self.msg[:3] != "350":
+                                        continue
                                 data_thread = threading.Thread(target=self.data_send, args=(arg, ))
                                 self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
                                 self.server_rcv()
@@ -673,6 +741,11 @@ class comm_sock:
                                     data_thread.join()
                         else:
                             if self.active_conn() == "200":
+                                if self.offset != 0:
+                                    self.s.send(("REST " + str(self.offset) + "\r\n").encode("ascii"))
+                                    self.server_rcv()
+                                    if self.msg[:3] != "350":
+                                        continue
                                 data_thread = threading.Thread(target=self.data_send, args=(arg, ))
                                 data_thread.daemon = True
                                 self.s.send(("STOR " + fname + "\r\n").encode("ascii"))

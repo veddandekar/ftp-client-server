@@ -194,8 +194,8 @@ class comm_sock:
                     self.reply("550 RNFR command failed.")
 
             elif msg[:4] == "REST":
-                    self.offset = int(msg[5:].strip())
-                    self.reply("350 Restart position accepted (" + str(self.offset) + ").")
+                self.offset = int(msg[5:].strip())
+                self.reply("350 Restart position accepted (" + str(self.offset) + ").")
 
             elif msg[:4] == "TYPE":
                 if msg[5] == 'A':                                       #Switch to ASCII mode

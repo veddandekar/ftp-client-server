@@ -180,11 +180,10 @@ class comm_sock:
                     except:
                         continue
                 if append:
-                    print("append")
-                    f = open(os.path.join(os.getcwd(), file), "ab")            #FIX FOR WINDOWS
+                    f = open(os.path.join(os.getcwd(), file), "ab")
                 else:
                     f = open(os.path.join(os.getcwd(), file), "wb")
-
+                    f.seek(self.offset, 0)
                 while chunk:
                     f.write(chunk)
                     chunk = self.data_server.recv(4096)
@@ -198,9 +197,10 @@ class comm_sock:
                     except:
                         continue
                 if append:
-                    f = open(os.path.join(os.getcwd(), file), "a")            #FIX FOR WINDOWS
+                    f = open(os.path.join(os.getcwd(), file), "a")
                 else:
                     f = open(os.path.join(os.getcwd(), file), "w")
+                f.seek(self.offset, 0)
                 while chunk:
                     f.write(chunk)
                     chunk = self.data_server.recv(4096).decode('ascii')

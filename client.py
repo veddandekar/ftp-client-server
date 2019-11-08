@@ -22,8 +22,8 @@ class comm_sock:
         self.s = None
         self.prompt = True
         self.authenticated = True
-        self.controller()
         self.offset = 0
+        self.controller()
 
     def controller(self):
         try:

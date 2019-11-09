@@ -23,6 +23,7 @@ class comm_sock:
         self.prompt = True
         self.authenticated = True
         self.offset = 0
+        self.hash = False
         self.controller()
 
     def controller(self):
@@ -71,7 +72,6 @@ class comm_sock:
             if os.name != 'nt':
                 import termios
                 fd = sys.stdin.fileno()
-
                 oldterm = termios.tcgetattr(fd)
                 newattr = termios.tcgetattr(fd)
                 newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
@@ -152,15 +152,19 @@ class comm_sock:
         if not file:
             while success:
                 try:
-                    chunk = self.data_server.recv(4096).decode('ascii')
+                    chunk = self.data_server.recv(1024).decode('ascii')
                     chunk = chunk.replace("\r\n", "\n")
+                    if self.hash and file:
+                        print("#", end="")
                     success = False
                 except:
                     continue
             while chunk:
                 data = data + chunk
-                chunk = self.data_server.recv(4096).decode('ascii')
+                chunk = self.data_server.recv(1024).decode('ascii')
                 chunk = chunk.replace("\r\n", "\n")
+                if self.hash and file:
+                    print("#", end="")
             if not NLST:
                 print(data, end="")
             else:
@@ -175,7 +179,7 @@ class comm_sock:
             if not self.ascii:
                 while success:
                     try:
-                        chunk = self.data_server.recv(4096)
+                        chunk = self.data_server.recv(1024)
                         success = False
                     except:
                         continue
@@ -186,12 +190,14 @@ class comm_sock:
                     f.seek(self.offset, 0)
                 while chunk:
                     f.write(chunk)
-                    chunk = self.data_server.recv(4096)
+                    if self.hash and file:
+                        print("#", end="")
+                    chunk = self.data_server.recv(1024)
                 f.close()
             else:
                 while success:
                     try:
-                        chunk = self.data_server.recv(4096).decode('ascii')
+                        chunk = self.data_server.recv(1024).decode('ascii')
                         chunk = chunk.replace("\r\n", "\n")
                         success = False
                     except:
@@ -203,30 +209,34 @@ class comm_sock:
                 f.seek(self.offset, 0)
                 while chunk:
                     f.write(chunk)
-                    chunk = self.data_server.recv(4096).decode('ascii')
+                    if self.hash and file:
+                        print("#", end="")
+                    chunk = self.data_server.recv(1024).decode('ascii')
                     chunk = chunk.replace("\r\n", "\n")
                 f.close()
+            if self.hash:
+                print()
             print(str(os.path.getsize(os.path.join(os.getcwd(), file))-int(self.offset)) + " bytes received.")
         self.offset = 0
         self.data_server.close()
 
     def data_send(self, file):
-
         if not self.ascii:
             f = open(os.path.join(os.getcwd(), file), "rb")
             if self.offset == 0:
                 f.seek(0, 0)
             else:
                 f.seek(self.offset, 0)
-            chunk = f.read(4096)
+            chunk = f.read(1024)
             while chunk:
                 self.data_server.send(chunk)
-                chunk = f.read(4096)
+                if self.hash and file:
+                    print("#", end="")
+                chunk = f.read(1024)
         else:
             f = open(os.path.join(os.getcwd(), file), "r")
-
             try:
-                testChunk = f.read(4096)
+                testChunk = f.read(1024)
             except:
                 print("Error reading file, try sending in binary mode.")
                 f.close()
@@ -237,15 +247,19 @@ class comm_sock:
                 f.seek(0, 0)
             else:
                 f.seek(self.offset, 0)
-            chunk = f.read(4096)
+            chunk = f.read(1024)
             chunk = chunk.replace("\n", "\r\n")
             while chunk:
                 self.data_server.send(chunk.encode('ascii'))
-                chunk = f.read(4096)
+                if self.hash and file:
+                    print("#", end="")
+                chunk = f.read(1024)
                 chunk = chunk.replace("\n", "\r\n")
 
         f.close()
         self.offset = 0
+        if self.hash:
+            print()
         print(str(os.path.getsize(os.path.join(os.getcwd(), file))) + " bytes sent.")
         self.data_server.close()
 
@@ -446,6 +460,14 @@ class comm_sock:
                         dir = arg[1]
                         self.s.send(("CWD " + dir + "\r\n").encode('ascii'))
                         self.server_rcv()
+
+                elif inpt[:4] == "hash":
+                    self.hash = not self.hash
+                    if self.hash:
+                        print("Hash mark printing on (1024 bytes/hash mark).")
+                    else:
+                        print("Hash mark printing off.")
+                    continue
 
                 elif inpt[:5] == "mkdir":
                     if not self.s:

@@ -35,14 +35,14 @@ class comm_sock:
         return
 
     def authenticate(self, client):                                     #Authenticate client
-        msg = client.recv(4096).decode('ascii')
+        msg = client.recv(1024).decode('ascii')
         if not msg:
             print(self.name, " has lost connection.")
             return False
         if msg[:4] == "USER":
             user = msg[5:].strip()
             client.send("331 Please specify the password.\r\n".encode("ascii"))
-            msg = client.recv(4096).decode('ascii')
+            msg = client.recv(1024).decode('ascii')
             if msg[:4] == "PASS":
                 password = msg[5:].strip()
             else:
@@ -68,19 +68,19 @@ class comm_sock:
     def data_receive(self, file):                                       #Receive data from client
         data = ""
         if not self.ascii:                                              #Binary mode
-            chunk = self.data_client.recv(4096)
+            chunk = self.data_client.recv(1024)
             f = open(os.path.join(self.dirpath, file), "wb")
             while chunk:
                 f.write(chunk)
-                chunk = self.data_client.recv(4096)
+                chunk = self.data_client.recv(1024)
         else:                                                           #ASCII mode
-            chunk = self.data_client.recv(4096).decode('ascii')
+            chunk = self.data_client.recv(1024).decode('ascii')
             chunk = chunk.replace("\r\n", "\n")
 
             f = open(os.path.join(self.dirpath, file), "w")
             while chunk:
                 f.write(chunk)
-                chunk = self.data_client.recv(4096).decode('ascii')
+                chunk = self.data_client.recv(1024).decode('ascii')
                 chunk = chunk.replace("\r\n", "\n")
 
         f.close()
@@ -95,7 +95,7 @@ class comm_sock:
         global ip
 
         while True:
-            msg = self.client.recv(4096).decode('ascii')
+            msg = self.client.recv(1024).decode('ascii')
 
             if not msg:                                                 #Checks if client connection has been lost
                 self.client.close()
@@ -184,7 +184,7 @@ class comm_sock:
                 if os.path.isfile(os.path.join(self.dirpath, arg_from)):            #Check if file exists
                     self.reply("350 Ready for RNTO.")
 
-                    msg = self.client.recv(4096).decode('ascii')
+                    msg = self.client.recv(1024).decode('ascii')
 
                     if msg[:4] == "RNTO":
                         arg_to = msg[5:].strip()
@@ -223,7 +223,7 @@ class comm_sock:
                     else:                                                       #ASCII mode
                         f = open(os.path.join(self.dirpath, arg), "r")
                     try:
-                        testChunk = f.read(4096)                                #Check if file is readable
+                        testChunk = f.read(1024)                                #Check if file is readable
                     except:
                         self.data_client.close()
                         self.reply("550 Failed to open file. Try Binary Mode.")         #File read failure occurs
@@ -236,7 +236,7 @@ class comm_sock:
                     self.reply("150 Opening data connection for " + arg + "(" + str(os.path.getsize(os.path.join(self.dirpath, arg))) + ")")
 
                     while True:
-                        chunk = f.read(4096)
+                        chunk = f.read(1024)
                         if not chunk:
                             break
                         self.data_send(chunk)

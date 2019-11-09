@@ -10,7 +10,7 @@ import glob
 
 class comm_sock:
     def __init__(self, host=None, port=None, ip=None):
-        self.history = []
+        self.history = []                               #All Hist variables for history
         self.histnum = -1
         self.histlinesize = []
         self.host = host
@@ -19,24 +19,24 @@ class comm_sock:
         self.msg = ""
         self.passive = True
         self.ascii = True
-        self.s = None
-        self.prompt = True
+        self.s = None                                   #Connection socket
+        self.prompt = True                              #For interactive mode
         self.authenticated = True
         self.offset = 0
-        self.hash = False
+        self.hash = False                               #For progress
         self.ip = ip
         if self.host:
-            self.make_connection()
-        self.controller()
+            self.make_connection()                      #Connect if commandline args present
+        self.controller()                               #Call main control function
 
     def controller(self):
         try:
             self.cmd_process()
         except KeyboardInterrupt:
             print()
-            self.controller()
+            self.controller()                           #Handles ctrl+c abort
 
-    def make_connection(self):
+    def make_connection(self):                          #Connects to server
         try:
             self.host = socket.gethostbyname(self.host)
             self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -50,7 +50,7 @@ class comm_sock:
             self.s = None
             return
 
-    def authenticate(self):
+    def authenticate(self):                                         #Authenticates user with sever
         self.server_rcv()
         if self.msg[:3] == '220':
             name = input('Name(' + self.host + ':' + getpass.getuser() + '): ')
@@ -69,13 +69,13 @@ class comm_sock:
                 self.end = True
                 return
 
-    def takeInput(self, outpt):
+    def takeInput(self, outpt):                                             #Handles non-canonical input
         if outpt == None:
             outpt = "ftp> "
         print(outpt, end="", flush=True)
         result = ""
         while True:
-            if os.name != 'nt':
+            if os.name != 'nt':                     #For linux systems
                 import termios
                 fd = sys.stdin.fileno()
                 oldterm = termios.tcgetattr(fd)
@@ -90,7 +90,7 @@ class comm_sock:
                 finally:
                     termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
             else:
-                import msvcrt
+                import msvcrt                           #For Windows system
                 c = msvcrt.getch()
 
             if c != '\n' and ord(c) != 13:
@@ -107,14 +107,14 @@ class comm_sock:
                         elif ord(c) == 80:
                             upArrow = False
                             downArrow = True
-                    if c == "\x1b[A" or upArrow:
+                    if c == "\x1b[A" or upArrow:            #Shows previous commands
                         print('\r{0}'.format(outpt + self.history[self.histnum]) + ' ' * 30 + '\b' * 30, end="")
                         result = self.history[self.histnum]
                         self.histnum = self.histnum - 1
                         if self.histnum == -1:
                             self.histnum = 0
 
-                    elif c == "\x1b[B" or downArrow:
+                    elif c == "\x1b[B" or downArrow:            #Shows later commands
                         self.histnum = self.histnum + 1
                         if self.histnum == len(self.history):
                             self.histnum = self.histnum - 1
@@ -139,7 +139,7 @@ class comm_sock:
         print()
         return result
 
-    def server_rcv(self):
+    def server_rcv(self):                       #Receives reply from server
         a = ""
         self.msg = ""
         while a != "\r":
@@ -152,10 +152,10 @@ class comm_sock:
         print(self.msg)
         self.s.recv(1).decode('ascii')
 
-    def data_rcv(self, file=None, NLST=False, append=False):
+    def data_rcv(self, file=None, NLST=False, append=False):                #Receive data from server
         success = True
         data = ""
-        if not file:
+        if not file:                                                    #For LIST
             while success:
                 try:
                     chunk = self.data_server.recv(1024).decode('ascii')
@@ -176,13 +176,13 @@ class comm_sock:
             else:
                 self.nlst_data = data
         else:
-            if self.offset:
+            if self.offset:                         #For restart
                 if not os.path.isfile(os.path.join(os.getcwd(), file)):
                     print("Restart works only if local file already exists.")
                     self.offset = 0
                     self.data_server.close()
                     return
-            if not self.ascii:
+            if not self.ascii:                      #binary mode
                 while success:
                     try:
                         chunk = self.data_server.recv(1024)
@@ -193,14 +193,23 @@ class comm_sock:
                     f = open(os.path.join(os.getcwd(), file), "ab")
                 else:
                     f = open(os.path.join(os.getcwd(), file), "wb")
-                f.seek(self.offset, 0)
+                if self.offset != 0:
+                    f.close()
+                    f = os.open(os.path.join(os.getcwd(), file), os.O_RDWR)
+                    os.lseek(f, self.offset, 0)
                 while chunk:
-                    f.write(chunk)
+                    if self.offset != 0:
+                        os.write(f, chunk)
+                    else:
+                        f.write(chunk)
                     if self.hash and file:
                         print("#", end="")
                     chunk = self.data_server.recv(1024)
-                f.close()
-            else:
+                if self.offset != 0:
+                    os.close(f)
+                else:
+                    f.close()
+            else:                                       #Ascii mode
                 while success:
                     try:
                         chunk = self.data_server.recv(1024).decode('ascii')
@@ -212,22 +221,31 @@ class comm_sock:
                     f = open(os.path.join(os.getcwd(), file), "a")
                 else:
                     f = open(os.path.join(os.getcwd(), file), "w")
-                f.seek(self.offset, 0)
+                if self.offset != 0:
+                    f.close()
+                    f = os.open(os.path.join(os.getcwd(), file), os.O_RDWR)
+                    os.lseek(f, self.offset, 0)
                 while chunk:
-                    f.write(chunk)
+                    if self.offset != 0:
+                        os.write(f, chunk)
+                    else:
+                        f.write(chunk)
                     if self.hash and file:
                         print("#", end="")
                     chunk = self.data_server.recv(1024).decode('ascii')
                     chunk = chunk.replace("\r\n", "\n")
-                f.close()
+                if self.offset != 0:
+                    os.close(f)
+                else:
+                    f.close()
             if self.hash:
                 print()
             print(str(os.path.getsize(os.path.join(os.getcwd(), file))-int(self.offset)) + " bytes received.")
         self.offset = 0
         self.data_server.close()
 
-    def data_send(self, file):
-        if not self.ascii:
+    def data_send(self, file):              #For put
+        if not self.ascii:                  #Binary mode
             f = open(os.path.join(os.getcwd(), file), "rb")
             if self.offset == 0:
                 f.seek(0, 0)
@@ -239,7 +257,7 @@ class comm_sock:
                 if self.hash and file:
                     print("#", end="")
                 chunk = f.read(1024)
-        else:
+        else:                               #ascii mode
             f = open(os.path.join(os.getcwd(), file), "r")
             try:
                 testChunk = f.read(1024)
@@ -264,18 +282,18 @@ class comm_sock:
 
         f.close()
         self.offset = 0
-        if self.hash:
+        if self.hash:                           #Print # for progress(hash mode on)
             print()
         print(str(os.path.getsize(os.path.join(os.getcwd(), file))) + " bytes sent.")
         self.data_server.close()
 
 
-    def data_sock(self, datasocket):
+    def data_sock(self, datasocket):            #Thread function for data server connection in active
         self.data_server, data_addr = datasocket.accept()
         print("Data connection established")
 
 
-    def active_conn(self):
+    def active_conn(self):                      #Active connection procedure
         port = random.randint(1024, 65535)
         a1, a2, a3, a4 = self.ip.split(".")
         datasocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -290,7 +308,7 @@ class comm_sock:
         return self.msg[:3]
 
 
-    def passive_conn(self):
+    def passive_conn(self):                     #Passive connection procedure
         self.s.send("PASV\r\n".encode("ascii"))
         self.server_rcv()
         if self.msg[:3] == "227":
@@ -305,14 +323,14 @@ class comm_sock:
         return "425"
 
 
-    def cmd_process(self):
+    def cmd_process(self):                      #Main function to execute commands
             while not self.end:
-                inpt = self.takeInput("ftp> ")
-                self.history.append(inpt)
+                inpt = self.takeInput("ftp> ")          #Prints prefix
+                self.history.append(inpt)               #To maintain history
                 self.histnum = len(self.history) - 1
-                if not inpt:
+                if not inpt:                    #Handles blank input
                     continue
-                if self.end:
+                if self.end:                    #To end process
                     return
                 if inpt[:4] == "open":
                     if self.s:
@@ -594,6 +612,8 @@ class comm_sock:
                             if self.msg[:3] == '150':
                                 data_thread.join()
                                 self.server_rcv()
+                            else:
+                                os.remove(os.path.join(os.getcwd(), fname))
                     else:
                         if self.active_conn() == "200":
                             if self.offset != 0:
@@ -609,6 +629,8 @@ class comm_sock:
                             if self.msg[:3] == '150':
                                 data_thread.join()
                                 self.server_rcv()
+                            else:
+                                os.remove(os.path.join(os.getcwd(), fname))
 
                 elif inpt[:5] == "chmod":
                     if not self.s:
@@ -719,7 +741,7 @@ class comm_sock:
                                 self.data_rcv(None, True)
                                 self.server_rcv()
                                 l = self.nlst_data.split("\n")
-                                l = l[:-1]                                  #CHECK IF AN EXTRA ITEM IS ALMOST GENERATED
+                                l = l[:-1]
                                 if not mode:
                                     self.ascii = False
                                     self.s.send("TYPE I\r\n".encode("ascii"))
@@ -826,7 +848,7 @@ class comm_sock:
                         arg = inpt[5:].split(" ")
 
                     for each in arg:
-                        flist = glob.glob(each)
+                        flist = glob.glob(each)                 #Handles *
                         for fname in flist:
                             if not os.path.isfile(os.path.join(os.getcwd(), fname)):
                                 print("No such file or directory")
@@ -855,7 +877,7 @@ class comm_sock:
                     print("?Invalid command.")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":              #Handles command line arguments and creates object
     if len(sys.argv) == 1:
         comm_sock()
     elif len(sys.argv) == 2:

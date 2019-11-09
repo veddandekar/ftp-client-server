@@ -70,20 +70,37 @@ class comm_sock:
         if not self.ascii:                                              #Binary mode
             chunk = self.data_client.recv(1024)
             f = open(os.path.join(self.dirpath, file), "wb")
+            if self.offset != 0:
+                f.close()
+                f = os.open(os.path.join(self.dirpath, file), os.O_RDWR)
+                os.lseek(f, self.offset, 0)
             while chunk:
-                f.write(chunk)
+                if self.offset != 0:
+                    os.write(f, chunk)
+                else:
+                    f.write(chunk)
                 chunk = self.data_client.recv(1024)
         else:                                                           #ASCII mode
             chunk = self.data_client.recv(1024).decode('ascii')
             chunk = chunk.replace("\r\n", "\n")
 
             f = open(os.path.join(self.dirpath, file), "w")
+            if self.offset != 0:
+                f.close()
+                f = os.open(os.path.join(self.dirpath, file), os.O_RDWR)
+                os.lseek(f, self.offset, 0)
             while chunk:
-                f.write(chunk)
+                if self.offset != 0:
+                    os.write(f, chunk)
+                else:
+                    f.write(chunk)
                 chunk = self.data_client.recv(1024).decode('ascii')
                 chunk = chunk.replace("\r\n", "\n")
-
-        f.close()
+        if self.offset != 0:
+            os.close(f)
+        else:
+            f.close()
+        self.offset = 0
         self.data_client.close()
 
 
@@ -232,7 +249,6 @@ class comm_sock:
                         f.seek(0, 0)
                     else:
                         f.seek(self.offset, 0)
-                    self.offset = 0
                     self.reply("150 Opening data connection for " + arg + "(" + str(os.path.getsize(os.path.join(self.dirpath, arg))) + ")")
 
                     while True:

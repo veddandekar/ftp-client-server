@@ -748,7 +748,7 @@ class comm_sock:
                                 self.data_rcv(None, True)
                                 self.server_rcv()
                                 l = self.nlst_data.split("\n")
-                                l = l[:-1]
+                                # l = l[:-1]
                                 if not mode:
                                     self.ascii = False
                                     self.s.send("TYPE I\r\n".encode("ascii"))

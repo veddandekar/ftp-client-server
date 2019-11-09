@@ -6,26 +6,26 @@ The main objective of this project is self learning and as such the main focus h
 
 ----
 
-##**Usage**
+## **Usage**
 
-- ###Server
+- ### Server
 execute the following command
 ```
 sudo python3 server.py _IPhere_ _port_
 
 ```
-####Note:
+#### Note:
 If no port is given, 21 is used.
 If neither port nor IP is given, user will be explicitly asked.
 
 
 
-- ###Client
+- ### Client
 execute the following command
 ```
 python3 client.py _IPhere_ _port_
 
 ```
-####Note:
+#### Note:
 If no port is given, 21 is used.
 If neither port nor IP is given, FTP starts without a connection.

@@ -8,7 +8,7 @@ The main objective of this project is self learning and as such the main focus h
 
 ## **Usage**
 
-1. ### Server
+### Server
 execute the following command
 ```
 sudo python3 server.py (IP_Here) (port)
@@ -20,7 +20,7 @@ sudo python3 server.py (IP_Here) (port)
 
 
 
-2. ### Client
+### Client
 execute the following command
 ```
 python3 client.py (IPHere) (port)

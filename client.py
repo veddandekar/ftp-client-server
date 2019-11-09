@@ -24,8 +24,10 @@ class comm_sock:
         self.authenticated = True
         self.offset = 0
         self.hash = False
-        self.controller()
         self.ip = ip
+        if self.host:
+            self.make_connection()
+        self.controller()
 
     def controller(self):
         try:
@@ -35,15 +37,18 @@ class comm_sock:
             self.controller()
 
     def make_connection(self):
-        self.host = socket.gethostbyname(self.host)
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print("Trying "+ self.host)
         try:
+            self.host = socket.gethostbyname(self.host)
+            self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            print("Trying "+ self.host)
             self.s.connect((self.host, self.port))
             print("Connected to " + self.host + ":" + str(self.port))
             self.authenticate()
         except:
             print("Connection Refused.")
+            self.authenticated = False
+            self.s = None
+            return
 
     def authenticate(self):
         self.server_rcv()
@@ -188,7 +193,7 @@ class comm_sock:
                     f = open(os.path.join(os.getcwd(), file), "ab")
                 else:
                     f = open(os.path.join(os.getcwd(), file), "wb")
-                    f.seek(self.offset, 0)
+                f.seek(self.offset, 0)
                 while chunk:
                     f.write(chunk)
                     if self.hash and file:
@@ -663,7 +668,10 @@ class comm_sock:
                                 self.server_rcv()
                                 if self.msg[:3] != "350":
                                     continue
-                            data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
+                            if self.offset:
+                                data_thread = threading.Thread(target=self.data_rcv, args=(fname, False, True))
+                            else:
+                                data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
                             self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
                             self.server_rcv()
                             data_thread.start()

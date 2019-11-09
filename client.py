@@ -9,7 +9,7 @@ import glob
 
 
 class comm_sock:
-    def __init__(self, host=None, port=None):
+    def __init__(self, host=None, port=None, ip=None):
         self.history = []
         self.histnum = -1
         self.histlinesize = []
@@ -25,6 +25,7 @@ class comm_sock:
         self.offset = 0
         self.hash = False
         self.controller()
+        self.ip = ip
 
     def controller(self):
         try:
@@ -270,12 +271,11 @@ class comm_sock:
 
 
     def active_conn(self):
-        global ip
         port = random.randint(1024, 65535)
-        a1, a2, a3, a4 = ip.split(".")
+        a1, a2, a3, a4 = self.ip.split(".")
         datasocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         datasocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        datasocket.bind((ip, port))
+        datasocket.bind((self.ip, port))
         datasocket.listen(1)
         data_thread = threading.Thread(target=self.data_sock, args=(datasocket,))
         data_thread.daemon = True
@@ -427,7 +427,7 @@ class comm_sock:
                                 self.s.send("TYPE A\r\n".encode("ascii"))
                                 self.server_rcv()
                                 if self.msg[:3] == '200':
-                                    self.s.send("LIST " + each + "\r\n".encode("ascii"))
+                                    self.s.send(("LIST " + each + "\r\n").encode("ascii"))
                                     self.server_rcv()
                                     if self.msg[:3] == "150":
                                         if loop == 0:
@@ -848,7 +848,6 @@ class comm_sock:
 
 
 if __name__ == "__main__":
-    global ip
     if len(sys.argv) == 1:
         comm_sock()
     elif len(sys.argv) == 2:
@@ -856,12 +855,12 @@ if __name__ == "__main__":
         ip = socket.gethostname()
         ip = socket.gethostbyname(ip)
         port = 21
-        comm_sock(host, port)
+        comm_sock(host, port, ip)
     elif len(sys.argv) == 3:
         host = sys.argv[1]
         port = int(sys.argv[2])
         ip = socket.gethostname()
         ip = socket.gethostbyname(ip)
-        comm_sock(host, port)
+        comm_sock(host, port, ip)
     else:
         print("Invalid arguments")

@@ -310,6 +310,9 @@ class comm_sock:
                 if self.end:
                     return
                 if inpt[:4] == "open":
+                    if self.s:
+                        print("Already connected, use close first.")
+                        continue
                     args = inpt[5:].strip().split(" ")
                     self.ip = socket.gethostname()
                     self.ip = socket.gethostbyname(self.ip)
@@ -321,7 +324,20 @@ class comm_sock:
                         self.port = int(args[1])
                     self.make_connection()
                     continue
-
+                elif inpt == "?" or inpt == "help":
+                    commands = ["!", "?", "ascii", "binary", "bye", "cd", "cdup", "chmod", "close", "delete", "dir", "disconnect", "exit", "get", "hash", "help", "image", "lcd", "ls", "mdir", "mget", "mkdir", "mput", "open", "passive", "prompt", "put", "pwd", "quit", "reget", "rename", "reset", "restart", "rmdir"]
+                    print("Commands may be abbreviated.  Commands are:")
+                    x = 0
+                    for each in commands:
+                        print(each, end="")
+                        x = x + 1
+                        if x == 4:
+                            print()
+                            x = 0
+                        else:
+                            print("\t\t", end="")
+                    print()
+                    continue
                 elif inpt[0] == '!':
                     if inpt[1:3] == "cd":
                         arg = inpt.split(" ")
@@ -343,7 +359,7 @@ class comm_sock:
                 elif inpt == "lcd":
                     print("Local directory now " + str(os.getcwd()))
 
-                elif inpt == "exit" or inpt == "disconnect" or inpt == "quit":          #CHECK
+                elif inpt == "exit" or inpt == "quit" or inpt == "bye":
                     if self.s:
                         self.s.send(("QUIT\r\n").encode('ascii'))
                         self.server_rcv()
@@ -352,6 +368,17 @@ class comm_sock:
                     else:
                         print("Goodbye.")
                     return
+
+                elif inpt == "disconnect" or inpt == "close":
+                    if not self.s:
+                        print("Not connected.")
+                        continue
+                    self.s.send(("QUIT\r\n").encode('ascii'))
+                    self.server_rcv()
+                    self.authenticated = False
+                    self.s.close()
+                    self.s = None
+                    continue
 
                 elif inpt[:2] == "ls" or inpt[:3] == "dir" or inpt[:4] == "mdir":
                     if not self.s:

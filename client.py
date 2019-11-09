@@ -74,6 +74,7 @@ class comm_sock:
             outpt = "ftp> "
         print(outpt, end="", flush=True)
         result = ""
+        backHist = ""
         while True:
             if os.name != 'nt':                     #For linux systems
                 import termios
@@ -108,6 +109,8 @@ class comm_sock:
                             upArrow = False
                             downArrow = True
                     if c == "\x1b[A" or upArrow:            #Shows previous commands
+                        if self.histnum == len(self.history)-1:
+                            backHist = result
                         print('\r{0}'.format(outpt + self.history[self.histnum]) + ' ' * 30 + '\b' * 30, end="")
                         result = self.history[self.histnum]
                         self.histnum = self.histnum - 1
@@ -115,6 +118,10 @@ class comm_sock:
                             self.histnum = 0
 
                     elif c == "\x1b[B" or downArrow:            #Shows later commands
+                        if self.histnum == len(self.history)-1:
+                            result = backHist
+                            print('\r{0}'.format(outpt + backHist) + ' ' * 30 + '\b' * 30, end="")
+                            continue
                         self.histnum = self.histnum + 1
                         if self.histnum == len(self.history):
                             self.histnum = self.histnum - 1
@@ -696,8 +703,8 @@ class comm_sock:
                                 data_thread = threading.Thread(target=self.data_rcv, args=(fname, ))
                             self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
                             self.server_rcv()
-                            data_thread.start()
                             if self.msg[:3] == '150':
+                                data_thread.start()
                                 data_thread.join()
                                 self.server_rcv()
                     else:
@@ -711,8 +718,8 @@ class comm_sock:
                             data_thread.daemon = True
                             self.s.send(("RETR " + arg + "\r\n").encode("ascii"))
                             self.server_rcv()
-                            data_thread.start()
                             if self.msg[:3] == '150':
+                                data_thread.start()
                                 data_thread.join()
                                 self.server_rcv()
 
@@ -753,8 +760,8 @@ class comm_sock:
                                         self.passive_conn()
                                         self.s.send(("RETR " + item + "\r\n").encode("ascii"))
                                         self.server_rcv()
-                                        data_thread.start()
                                         if self.msg[:3] == '150':
+                                            data_thread.start()
                                             data_thread.join()
                                             self.server_rcv()
                         else:
@@ -780,8 +787,8 @@ class comm_sock:
                                         self.active_conn()
                                         self.s.send(("RETR " + item + "\r\n").encode("ascii"))
                                         self.server_rcv()
-                                        data_thread.start()
                                         if self.msg[:3] == '150':
+                                            data_thread.start()
                                             data_thread.join()
                                             self.server_rcv()
 
@@ -815,8 +822,8 @@ class comm_sock:
                                 data_thread = threading.Thread(target=self.data_send, args=(arg, ))
                                 self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
                                 self.server_rcv()
-                                data_thread.start()
                                 if self.msg[:3] == '150':
+                                    data_thread.start()
                                     data_thread.join()
                         else:
                             if self.active_conn() == "200":
@@ -829,8 +836,8 @@ class comm_sock:
                                 data_thread.daemon = True
                                 self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
                                 self.server_rcv()
-                                data_thread.start()
                                 if self.msg[:3] == '150':
+                                    data_thread.start()
                                     data_thread.join()
                         self.server_rcv()
 
@@ -868,8 +875,8 @@ class comm_sock:
                                             data_thread.daemon = True
                                             self.s.send(("STOR " + fname + "\r\n").encode("ascii"))
                                             self.server_rcv()
-                                            data_thread.start()
                                             if self.msg[:3] == '150':
+                                                data_thread.start()
                                                 data_thread.join()
                                     self.server_rcv()
 

@@ -72,7 +72,6 @@ class comm_sock:
             if self.offset != 0:
                 f = os.open(os.path.join(self.dirpath, file), os.O_RDWR)
                 os.lseek(f, self.offset, 0)
-                print("TEST")
             else:
                 f = open(os.path.join(self.dirpath, file), "wb")
             while chunk:

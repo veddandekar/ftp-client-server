@@ -66,7 +66,6 @@ class comm_sock:
                     self.authenticated = True
                     return
                 print("Login failed.")
-                self.end = True
                 return
 
     def takeInput(self, outpt):                                             #Handles non-canonical input
@@ -344,13 +343,19 @@ class comm_sock:
                     continue
                 if self.end:                    #To end process
                     return
+                if inpt[:2] == "ip":
+                    self.ip = inpt[2:].strip()
+                    self.ip = socket.gethostbyname(self.ip)
+                    print("IP set for active connection")
+                    continue
                 if inpt[:4] == "open":
                     if self.s:
                         print("Already connected, use close first.")
                         continue
                     args = inpt[5:].strip().split(" ")
-                    self.ip = socket.gethostname()
-                    self.ip = socket.gethostbyname(self.ip)
+                    if self.ip == None:
+                        self.ip = socket.gethostname()
+                        self.ip = socket.gethostbyname(self.ip)
                     if len(args) == 1:
                         self.host = args[0]
                         self.port = 21
@@ -419,9 +424,6 @@ class comm_sock:
                     if not self.s:
                         print("Not connected.")
                         continue
-                    # if not self.authenticated:
-                    #     print("PLease login")
-                    #     continue
                     l = inpt.strip().split(" ")
                     if l[0] == "ls" or l[0] == "dir":
                         l = l[:3]
@@ -753,7 +755,8 @@ class comm_sock:
                                 self.data_rcv(None, True)
                                 self.server_rcv()
                                 l = self.nlst_data.split("\n")
-                                # l = l[:-1]
+                                if l[-1] == "":
+                                    l = l[:-1]
                                 if not mode:
                                     self.ascii = False
                                     self.s.send("TYPE I\r\n".encode("ascii"))

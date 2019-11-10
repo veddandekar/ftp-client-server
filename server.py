@@ -226,7 +226,8 @@ class comm_sock:
                 self.reply("150 Here comes the directory listing.")
                 rmsg = ""
                 for each in glob.glob(msg[5:].strip()):
-                    rmsg = rmsg + each + "\r\n"
+                    if os.path.isfile(each):
+                        rmsg = rmsg + each + "\r\n"
                 rmsg = rmsg[:-2]
                 self.data_send(rmsg)
                 self.data_client.close()

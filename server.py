@@ -69,11 +69,12 @@ class comm_sock:
         data = ""
         if not self.ascii:                                              #Binary mode
             chunk = self.data_client.recv(1024)
-            f = open(os.path.join(self.dirpath, file), "wb")
             if self.offset != 0:
-                f.close()
                 f = os.open(os.path.join(self.dirpath, file), os.O_RDWR)
                 os.lseek(f, self.offset, 0)
+                print("TEST")
+            else:
+                f = open(os.path.join(self.dirpath, file), "wb")
             while chunk:
                 if self.offset != 0:
                     os.write(f, chunk)
@@ -287,7 +288,11 @@ class comm_sock:
                 self.data_client.bind((ip, 20))
                 host = a1 + '.' + a2 + '.' + a3 + '.' + a4
                 port = int(p1) * 256 + int(p2)
-                self.data_client.connect((host, port))                                  #Connect to received ip and port
+                try:
+                    self.data_client.connect((host, port))                                  #Connect to received ip and port
+                except:
+                    self.reply("550 PORT command failed.")
+                    continue
                 self.reply("200 PORT command succesful. Consider using passive mode")
 
             elif msg == "QUIT\r\n":                                 #For Client quit
@@ -303,7 +308,11 @@ def listener(ip, port):
 
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)                  #Declare port as reusable
-    serversocket.bind((ip, port))
+    try:
+        serversocket.bind((ip, port))
+    except:
+        print("Error in socket binding. Check given IP and port.")
+        sys.exit()
     serversocket.listen(5)
     print("Server started. Waiting for client.")
 

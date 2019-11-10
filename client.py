@@ -265,6 +265,10 @@ class comm_sock:
                     print("#", end="")
                 chunk = f.read(1024)
         else:                               #ascii mode
+            if self.offset != 0:
+                print("Restart not support in ascii")
+                self.data_server.close()
+                return
             f = open(os.path.join(os.getcwd(), file), "r")
             try:
                 testChunk = f.read(1024)
@@ -272,6 +276,7 @@ class comm_sock:
                 print("Error reading file, try sending in binary mode.")
                 f.close()
                 self.data_server.close()
+                self.offset = 0
                 return
             f.seek(0, 0)
             if self.offset == 0:
